@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <h1>Button Test Page</h1>
+        
+        <div class="test-section">
+            <h3>Test Navigation Function</h3>
+            <button class="btn btn-primary" onclick="testNavigateTo()">Test navigateTo('become-tutor')</button>
+            <div id="nav-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Become Tutor Page Function</h3>
+            <button class="btn btn-success" onclick="testBecomeTutorPage()">Test getBecomeTutorPageHTML()</button>
+            <div id="page-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Main Content Div</h3>
+            <button class="btn btn-info" onclick="testMainContent()">Test main-content div</button>
+            <div id="content-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Console Errors</h3>
+            <div id="console-errors">Check browser console (F12) for errors</div>
+        </div>
+    </div>
+
+    <script>
+        function testNavigateTo() {
+            const resultDiv = document.getElementById('nav-result');
+            try {
+                if (typeof navigateTo === 'function') {
+                    navigateTo('become-tutor');
+                    resultDiv.innerHTML = '<span class="success">✅ navigateTo() called successfully</span>';
+                } else {
+                    resultDiv.innerHTML = '<span class="error">❌ navigateTo() function not found</span>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+        
+        function testBecomeTutorPage() {
+            const resultDiv = document.getElementById('page-result');
+            try {
+                if (typeof getBecomeTutorPageHTML === 'function') {
+                    const html = getBecomeTutorPageHTML();
+                    resultDiv.innerHTML = '<span class="success">✅ getBecomeTutorPageHTML() works - Length: ' + html.length + ' characters</span>';
+                } else {
+                    resultDiv.innerHTML = '<span class="error">❌ getBecomeTutorPageHTML() function not found</span>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+        
+        function testMainContent() {
+            const resultDiv = document.getElementById('content-result');
+            try {
+                const mainContent = document.getElementById('main-content');
+                if (mainContent) {
+                    resultDiv.innerHTML = '<span class="success">✅ main-content div found</span>';
+                } else {
+                    resultDiv.innerHTML = '<span class="error">❌ main-content div not found</span>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+        
+        // Override console.error to show errors on page
+        const originalError = console.error;
+        console.error = function(...args) {
+            const errorDiv = document.getElementById('console-errors');
+            errorDiv.innerHTML += '<div class="error">' + args.join(' ') + '</div>';
+            originalError.apply(console, args);
+        };
+        
+        // Test on page load
+        window.addEventListener('load', function() {
+            console.log('Button test page loaded');
+        });
+    </script>
+    
+    <!-- Load the actual scripts -->
+    <script src="./scripts/api.js"></script>
+    <script src="./scripts/main.js"></script>
+</body>
+</html>
