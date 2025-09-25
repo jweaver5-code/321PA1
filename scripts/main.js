@@ -113,8 +113,62 @@ const mockBookings = [
 ];
 
 // Initialize the application
+// Form submission handlers
+function handleTutorApplication(event) {
+  event.preventDefault();
+  
+  const formData = {
+    firstName: document.getElementById('tutor-firstName').value,
+    lastName: document.getElementById('tutor-lastName').value,
+    email: document.getElementById('tutor-email').value,
+    university: document.getElementById('tutor-university').value,
+    major: document.getElementById('tutor-major').value,
+    year: document.getElementById('tutor-year').value,
+    subjects: Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value),
+    hourlyRate: document.getElementById('rate-display').value,
+    experience: document.getElementById('tutor-experience').value,
+    motivation: document.getElementById('tutor-motivation').value,
+    availability: Array.from(document.querySelectorAll('input[name="availability"]:checked')).map(cb => cb.value)
+  };
+  
+  // Here you would typically send this to your API
+  console.log('Tutor Application:', formData);
+  alert('Thank you for your application! We will review it and get back to you within 2-3 business days.');
+  
+  // Reset form
+  document.getElementById('tutor-application-form').reset();
+}
+
+function handleSupportForm(event) {
+  event.preventDefault();
+  
+  const formData = {
+    firstName: document.getElementById('support-firstName').value,
+    lastName: document.getElementById('support-lastName').value,
+    email: document.getElementById('support-email').value,
+    subject: document.getElementById('support-subject').value,
+    message: document.getElementById('support-message').value
+  };
+  
+  // Here you would typically send this to your API
+  console.log('Support Request:', formData);
+  alert('Thank you for contacting us! We will get back to you within 24 hours.');
+  
+  // Reset form
+  document.getElementById('support-form').reset();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   initializeApp();
+  
+  // Add event listeners for forms
+  document.addEventListener('submit', function(event) {
+    if (event.target.id === 'tutor-application-form') {
+      handleTutorApplication(event);
+    } else if (event.target.id === 'support-form') {
+      handleSupportForm(event);
+    }
+  });
 });
 
 function initializeApp() {
@@ -947,9 +1001,569 @@ async function handleSignup(e) {
     alert('Signup failed: ' + error.message);
   }
 }
-function getBecomeTutorPageHTML() { return '<div class="container py-5"><h1>Become a Tutor Page</h1></div>'; }
-function getHowItWorksPageHTML() { return '<div class="container py-5"><h1>How It Works Page</h1></div>'; }
-function getSupportPageHTML() { return '<div class="container py-5"><h1>Support Page</h1></div>'; }
+// Helper functions for page interactions
+function scrollToForm() {
+  document.getElementById('tutor-application')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+function scrollToFAQ() {
+  document.getElementById('faq-section')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+function openLiveChat() {
+  alert('Live chat feature coming soon! For now, please use the contact form below.');
+}
+
+function openEmailForm() {
+  document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+function showPhoneNumber() {
+  alert('Call us at: 1-800-TUTOR-APP\n\nHours: 24/7 Support');
+}
+
+function updateRateDisplay() {
+  const slider = document.getElementById('rate-slider');
+  const display = document.getElementById('rate-display');
+  if (slider && display) {
+    display.value = slider.value;
+  }
+}
+
+function updateRateSlider() {
+  const slider = document.getElementById('rate-slider');
+  const display = document.getElementById('rate-display');
+  if (slider && display) {
+    slider.value = display.value;
+  }
+}
+
+function getBecomeTutorPageHTML() {
+  return `
+    <div class="min-vh-100 bg-light">
+      <!-- Hero Section -->
+      <div class="bg-gradient-primary text-white py-5">
+        <div class="container">
+          <div class="row align-items-center">
+            <div class="col-lg-6">
+              <h1 class="display-5 fw-bold mb-4">Become a Tutor</h1>
+              <p class="lead mb-4">
+                Share your knowledge and earn money by helping students succeed. 
+                Join our community of verified tutors and make a difference.
+              </p>
+              <div class="d-flex flex-wrap gap-3">
+                <button class="btn btn-light btn-lg" onclick="scrollToForm()">Apply Now</button>
+                <button class="btn btn-outline-light btn-lg" onclick="navigateTo('how-it-works')">Learn More</button>
+              </div>
+            </div>
+            <div class="col-lg-6 text-center">
+              <div class="bg-white bg-opacity-10 rounded-3 p-4">
+                <i class="bi bi-mortarboard display-1 mb-3"></i>
+                <h3 class="h4">Start Earning Today</h3>
+                <p class="mb-0">Average tutor earns $35-60/hour</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Benefits Section -->
+      <div class="container py-5">
+        <div class="row">
+          <div class="col-lg-8 mx-auto text-center mb-5">
+            <h2 class="h3 fw-bold mb-3">Why Become a Tutor?</h2>
+            <p class="text-muted">Join thousands of successful tutors who are making a difference while earning great money.</p>
+          </div>
+        </div>
+        
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="text-center">
+              <div class="bg-primary bg-opacity-10 rounded-3 p-4 mb-3">
+                <i class="bi bi-currency-dollar display-4 text-primary"></i>
+              </div>
+              <h4 class="h5 fw-semibold">Flexible Earnings</h4>
+              <p class="text-muted">Set your own rates and schedule. Earn $25-100+ per hour based on your expertise.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="text-center">
+              <div class="bg-success bg-opacity-10 rounded-3 p-4 mb-3">
+                <i class="bi bi-clock display-4 text-success"></i>
+              </div>
+              <h4 class="h5 fw-semibold">Work When You Want</h4>
+              <p class="text-muted">Choose your own hours. Work part-time or full-time, online or in-person.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="text-center">
+              <div class="bg-info bg-opacity-10 rounded-3 p-4 mb-3">
+                <i class="bi bi-people display-4 text-info"></i>
+              </div>
+              <h4 class="h5 fw-semibold">Make a Difference</h4>
+              <p class="text-muted">Help students achieve their goals while building your teaching portfolio.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Application Form -->
+      <div class="container py-5" id="tutor-application">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <div class="bg-white rounded-3 shadow-sm p-5">
+              <h2 class="h3 fw-bold text-center mb-4">Apply to Become a Tutor</h2>
+              <p class="text-muted text-center mb-5">Fill out the form below and we'll review your application within 2-3 business days.</p>
+              
+              <form id="tutor-application-form">
+                <div class="row g-3 mb-4">
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">First Name *</label>
+                    <input type="text" class="form-control" id="tutor-firstName" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Last Name *</label>
+                    <input type="text" class="form-control" id="tutor-lastName" required>
+                  </div>
+                </div>
+                
+                <div class="mb-4">
+                  <label class="form-label fw-semibold">Email Address *</label>
+                  <input type="email" class="form-control" id="tutor-email" required>
+                </div>
+                
+                <div class="mb-4">
+                  <label class="form-label fw-semibold">University/College *</label>
+                  <input type="text" class="form-control" id="tutor-university" required>
+                </div>
+                
+                <div class="row g-3 mb-4">
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Major/Field of Study *</label>
+                    <input type="text" class="form-control" id="tutor-major" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Year/Graduation Status *</label>
+                    <select class="form-select" id="tutor-year" required>
+                      <option value="">Select year</option>
+                      <option value="Freshman">Freshman</option>
+                      <option value="Sophomore">Sophomore</option>
+                      <option value="Junior">Junior</option>
+                      <option value="Senior">Senior</option>
+                      <option value="Graduate">Graduate Student</option>
+                      <option value="Graduated">Graduated</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="mb-4">
+                  <label class="form-label fw-semibold">Subjects You Can Tutor *</label>
+                  <div class="row g-2">
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="Mathematics" id="subject-math">
+                        <label class="form-check-label" for="subject-math">Mathematics</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="Computer Science" id="subject-cs">
+                        <label class="form-check-label" for="subject-cs">Computer Science</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="Physics" id="subject-physics">
+                        <label class="form-check-label" for="subject-physics">Physics</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="Chemistry" id="subject-chemistry">
+                        <label class="form-check-label" for="subject-chemistry">Chemistry</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="Biology" id="subject-biology">
+                        <label class="form-check-label" for="subject-biology">Biology</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="English" id="subject-english">
+                        <label class="form-check-label" for="subject-english">English</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="mb-4">
+                  <label class="form-label fw-semibold">Hourly Rate (USD) *</label>
+                  <div class="row g-2">
+                    <div class="col-md-6">
+                      <input type="range" class="form-range" id="rate-slider" min="20" max="100" value="35" oninput="updateRateDisplay()">
+                    </div>
+                    <div class="col-md-6">
+                      <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="rate-display" value="35" min="20" max="100" onchange="updateRateSlider()">
+                        <span class="input-group-text">/hour</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="mb-4">
+                  <label class="form-label fw-semibold">Teaching Experience *</label>
+                  <textarea class="form-control" id="tutor-experience" rows="4" placeholder="Describe your teaching, tutoring, or mentoring experience..." required></textarea>
+                </div>
+                
+                <div class="mb-4">
+                  <label class="form-label fw-semibold">Why do you want to become a tutor? *</label>
+                  <textarea class="form-control" id="tutor-motivation" rows="3" placeholder="Tell us about your passion for teaching and helping students..." required></textarea>
+                </div>
+                
+                <div class="form-check mb-4">
+                  <input class="form-check-input" type="checkbox" id="tutor-terms" required>
+                  <label class="form-check-label" for="tutor-terms">
+                    I agree to the <a href="#" class="text-primary">Tutor Terms of Service</a> and <a href="#" class="text-primary">Code of Conduct</a>
+                  </label>
+                </div>
+                
+                <div class="text-center">
+                  <button type="submit" class="btn btn-primary btn-lg px-5">Submit Application</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function getHowItWorksPageHTML() {
+  return `
+    <div class="min-vh-100 bg-light">
+      <div class="bg-white py-5">
+        <div class="container">
+          <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+              <h1 class="display-5 fw-bold mb-4">How TutorApp Works</h1>
+              <p class="lead text-muted">
+                Getting started with TutorApp is simple. Whether you're a student looking for help 
+                or a tutor ready to teach, we've made the process easy and secure.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container py-5">
+        <div class="row">
+          <div class="col-lg-8 mx-auto">
+            <h2 class="h3 fw-bold text-center mb-5">For Students</h2>
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <div class="flex-shrink-0">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                      <span class="fw-bold fs-4">1</span>
+                    </div>
+                  </div>
+                  <div class="flex-grow-1 ms-4">
+                    <h4 class="h5 fw-semibold">Create Your Account</h4>
+                    <p class="text-muted mb-0">Sign up as a student and tell us about your academic needs and goals.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <div class="flex-shrink-0">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                      <span class="fw-bold fs-4">2</span>
+                    </div>
+                  </div>
+                  <div class="flex-grow-1 ms-4">
+                    <h4 class="h5 fw-semibold">Find Your Perfect Tutor</h4>
+                    <p class="text-muted mb-0">Browse verified tutors by subject, rating, price, and availability.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <div class="flex-shrink-0">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                      <span class="fw-bold fs-4">3</span>
+                    </div>
+                  </div>
+                  <div class="flex-grow-1 ms-4">
+                    <h4 class="h5 fw-semibold">Book a Session</h4>
+                    <p class="text-muted mb-0">Choose your preferred time and book instantly with secure payment.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <div class="flex-shrink-0">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                      <span class="fw-bold fs-4">4</span>
+                    </div>
+                  </div>
+                  <div class="flex-grow-1 ms-4">
+                    <h4 class="h5 fw-semibold">Learn & Succeed</h4>
+                    <p class="text-muted mb-0">Meet with your tutor online or in-person and achieve your academic goals.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white py-5">
+        <div class="container">
+          <div class="row">
+            <div class="col-lg-8 mx-auto">
+              <h2 class="h3 fw-bold text-center mb-5">For Tutors</h2>
+              <div class="row g-4">
+                <div class="col-md-6">
+                  <div class="d-flex">
+                    <div class="flex-shrink-0">
+                      <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold fs-4">1</span>
+                      </div>
+                    </div>
+                    <div class="flex-grow-1 ms-4">
+                      <h4 class="h5 fw-semibold">Apply to Teach</h4>
+                      <p class="text-muted mb-0">Submit your application with your academic background and teaching experience.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="d-flex">
+                    <div class="flex-shrink-0">
+                      <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold fs-4">2</span>
+                      </div>
+                    </div>
+                    <div class="flex-grow-1 ms-4">
+                      <h4 class="h5 fw-semibold">Get Verified</h4>
+                      <p class="text-muted mb-0">We review your application and verify your credentials within 2-3 days.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="d-flex">
+                    <div class="flex-shrink-0">
+                      <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold fs-4">3</span>
+                      </div>
+                    </div>
+                    <div class="flex-grow-1 ms-4">
+                      <h4 class="h5 fw-semibold">Set Your Schedule</h4>
+                      <p class="text-muted mb-0">Create your profile, set your rates, and choose your available hours.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="d-flex">
+                    <div class="flex-shrink-0">
+                      <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold fs-4">4</span>
+                      </div>
+                    </div>
+                    <div class="flex-grow-1 ms-4">
+                      <h4 class="h5 fw-semibold">Start Teaching</h4>
+                      <p class="text-muted mb-0">Students book sessions with you and you start earning money teaching.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function getSupportPageHTML() {
+  return `
+    <div class="min-vh-100 bg-light">
+      <div class="bg-white py-5">
+        <div class="container">
+          <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+              <h1 class="display-5 fw-bold mb-4">Support Center</h1>
+              <p class="lead text-muted">
+                We're here to help! Find answers to common questions or contact our support team.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container py-5">
+        <div class="row">
+          <div class="col-lg-8 mx-auto">
+            <h2 class="h3 fw-bold text-center mb-5">Quick Help</h2>
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div class="card h-100 border-0 shadow-sm">
+                  <div class="card-body text-center p-4">
+                    <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                      <i class="bi bi-question-circle display-6 text-primary"></i>
+                    </div>
+                    <h4 class="h5 fw-semibold">FAQ</h4>
+                    <p class="text-muted mb-3">Find answers to frequently asked questions about using TutorApp.</p>
+                    <button class="btn btn-outline-primary" onclick="scrollToFAQ()">View FAQ</button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card h-100 border-0 shadow-sm">
+                  <div class="card-body text-center p-4">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                      <i class="bi bi-chat-dots display-6 text-success"></i>
+                    </div>
+                    <h4 class="h5 fw-semibold">Live Chat</h4>
+                    <p class="text-muted mb-3">Chat with our support team in real-time for immediate assistance.</p>
+                    <button class="btn btn-outline-success" onclick="openLiveChat()">Start Chat</button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card h-100 border-0 shadow-sm">
+                  <div class="card-body text-center p-4">
+                    <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                      <i class="bi bi-envelope display-6 text-info"></i>
+                    </div>
+                    <h4 class="h5 fw-semibold">Email Support</h4>
+                    <p class="text-muted mb-3">Send us an email and we'll respond within 24 hours.</p>
+                    <button class="btn btn-outline-info" onclick="openEmailForm()">Send Email</button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card h-100 border-0 shadow-sm">
+                  <div class="card-body text-center p-4">
+                    <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                      <i class="bi bi-telephone display-6 text-warning"></i>
+                    </div>
+                    <h4 class="h5 fw-semibold">Phone Support</h4>
+                    <p class="text-muted mb-3">Call us for urgent issues or complex problems.</p>
+                    <button class="btn btn-outline-warning" onclick="showPhoneNumber()">Call Now</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white py-5" id="contact-form">
+        <div class="container">
+          <div class="row justify-content-center">
+            <div class="col-lg-8">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body p-5">
+                  <h2 class="h3 fw-bold text-center mb-4">Contact Us</h2>
+                  <p class="text-muted text-center mb-5">Send us a message and we'll get back to you as soon as possible.</p>
+                  
+                  <form id="support-form">
+                    <div class="row g-3 mb-4">
+                      <div class="col-md-6">
+                        <label class="form-label fw-semibold">First Name *</label>
+                        <input type="text" class="form-control" id="support-firstName" required>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label fw-semibold">Last Name *</label>
+                        <input type="text" class="form-control" id="support-lastName" required>
+                      </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                      <label class="form-label fw-semibold">Email Address *</label>
+                      <input type="email" class="form-control" id="support-email" required>
+                    </div>
+                    
+                    <div class="mb-4">
+                      <label class="form-label fw-semibold">Subject *</label>
+                      <select class="form-select" id="support-subject" required>
+                        <option value="">Select a subject</option>
+                        <option value="General Inquiry">General Inquiry</option>
+                        <option value="Technical Issue">Technical Issue</option>
+                        <option value="Billing Question">Billing Question</option>
+                        <option value="Tutor Application">Tutor Application</option>
+                        <option value="Account Problem">Account Problem</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                      <label class="form-label fw-semibold">Message *</label>
+                      <textarea class="form-control" id="support-message" rows="5" placeholder="Please describe your issue or question in detail..." required></textarea>
+                    </div>
+                    
+                    <div class="text-center">
+                      <button type="submit" class="btn btn-primary btn-lg px-5">Send Message</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container py-5" id="faq-section">
+        <div class="row">
+          <div class="col-lg-8 mx-auto">
+            <h2 class="h3 fw-bold text-center mb-5">Frequently Asked Questions</h2>
+            <div class="accordion" id="supportFaqAccordion">
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#supportFaq1">
+                    How do I reset my password?
+                  </button>
+                </h2>
+                <div id="supportFaq1" class="accordion-collapse collapse show" data-bs-parent="#supportFaqAccordion">
+                  <div class="accordion-body">
+                    Click "Forgot Password" on the login page and enter your email address. We'll send you a link to reset your password.
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#supportFaq2">
+                    How do I update my profile information?
+                  </button>
+                </h2>
+                <div id="supportFaq2" class="accordion-collapse collapse" data-bs-parent="#supportFaqAccordion">
+                  <div class="accordion-body">
+                    Go to your dashboard and click on "Profile" to update your personal information, subjects, and availability.
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#supportFaq3">
+                    What payment methods do you accept?
+                  </button>
+                </h2>
+                <div id="supportFaq3" class="accordion-collapse collapse" data-bs-parent="#supportFaqAccordion">
+                  <div class="accordion-body">
+                    We accept all major credit cards (Visa, MasterCard, American Express) and PayPal for secure payments.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
 function getDashboardPageHTML() { return '<div class="container py-5"><h1>Dashboard Page</h1></div>'; }
 function getProfilePageHTML() { return '<div class="container py-5"><h1>Profile Page</h1></div>'; }
 function getBookingsPageHTML() { return '<div class="container py-5"><h1>Bookings Page</h1></div>'; }
