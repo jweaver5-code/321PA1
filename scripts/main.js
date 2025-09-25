@@ -155,10 +155,19 @@ async function handleTutorApplication(event) {
       isVerified: true // Auto-verify new tutors
     };
     
-    // Add to tutors list
+    // Try to save to API first
+    try {
+      const savedTutor = await TutorAppAPI.createTutor(newTutor);
+      // Use the tutor data returned from API (with proper ID)
+      AppState.tutors.push(savedTutor);
+      console.log('New tutor saved to API:', savedTutor);
+    } catch (apiError) {
+      console.log('API not available, saving to localStorage:', apiError.message);
+      // Fallback to localStorage
     AppState.tutors.push(newTutor);
+    }
     
-    // Save to localStorage for persistence
+    // Always save to localStorage for persistence
     localStorage.setItem('tutors', JSON.stringify(AppState.tutors));
     
     console.log('New tutor added:', newTutor);
@@ -251,10 +260,10 @@ function loadTutorsFromLocalStorage() {
 async function loadTutorsFromAPI() {
   try {
     // Check if API is available
-    const response = await fetch('http://localhost:5000/api/tutors');
+    const response = await fetch('http://localhost:5001/api/tutors');
     if (response.ok) {
       const data = await response.json();
-      AppState.tutors = data.map(tutor => ({
+      const apiTutors = data.map(tutor => ({
         id: tutor.id,
         name: tutor.name,
         major: tutor.major,
@@ -268,12 +277,27 @@ async function loadTutorsFromAPI() {
         availability: tutor.availability,
         isVerified: tutor.isVerified
       }));
+      
+      // Merge API tutors with existing tutors (from localStorage)
+      // Keep localStorage tutors that aren't in API, and update existing ones
+      const existingTutors = [...AppState.tutors];
+      AppState.tutors = apiTutors;
+      
+      // Add any tutors from localStorage that aren't in the API
+      existingTutors.forEach(localTutor => {
+        if (!AppState.tutors.find(t => t.id === localTutor.id)) {
+          AppState.tutors.push(localTutor);
+        }
+      });
     } else {
       throw new Error('API not available');
     }
   } catch (error) {
-    console.log('Using mock data for tutors:', error.message);
+    console.log('Using existing tutors data:', error.message);
+    // Keep existing tutors data (from localStorage) instead of using mock data
+    if (AppState.tutors.length === 0) {
     AppState.tutors = mockTutors;
+    }
   }
 }
 
@@ -283,6 +307,7 @@ function loadUser() {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       AppState.currentUser = JSON.parse(savedUser);
+      updateAuthUI(); // Update the UI when user is loaded
     }
   } catch (error) {
     console.error('Error loading user from localStorage:', error);
@@ -316,7 +341,7 @@ function updateAuthUI() {
     mobileUserMenu.classList.remove('d-none');
     mobileGuestMenu.classList.add('d-none');
     
-    // Update user info
+    // Update user info in desktop nav
     const userAvatar = document.getElementById('user-avatar');
     const userName = document.getElementById('user-name');
     
@@ -326,6 +351,23 @@ function updateAuthUI() {
     if (userName) {
       userName.textContent = `${AppState.currentUser.firstName} ${AppState.currentUser.lastName}`;
     }
+    
+    // Update mobile menu user info if elements exist
+    const mobileUserAvatar = document.getElementById('mobile-user-avatar');
+    const mobileUserName = document.getElementById('mobile-user-name');
+    
+    if (mobileUserAvatar) {
+      mobileUserAvatar.textContent = AppState.currentUser.firstName.charAt(0);
+    }
+    if (mobileUserName) {
+      mobileUserName.textContent = `${AppState.currentUser.firstName} ${AppState.currentUser.lastName}`;
+    }
+    
+    // Update account type display
+    const accountTypeElements = document.querySelectorAll('.account-type');
+    accountTypeElements.forEach(element => {
+      element.textContent = AppState.currentUser.userType === 'tutor' ? 'Tutor' : 'Student';
+    });
   } else {
     // Show guest menu
     userMenu.classList.add('d-none');
@@ -378,6 +420,7 @@ function loadPage(page) {
       break;
     case 'dashboard':
       mainContent.innerHTML = getDashboardPageHTML();
+      updateAuthUI(); // Ensure navigation is updated
       break;
     case 'profile':
       mainContent.innerHTML = getProfilePageHTML();
@@ -434,10 +477,10 @@ function getHomePageHTML() {
               </div>
             </div>
             <div class="col-lg-6 text-center">
-              <div class="bg-white bg-opacity-10 rounded-3 p-4">
-                <i class="bi bi-mortarboard display-1 mb-3"></i>
-                <h3 class="h4">Join Our Community</h3>
-                <p class="mb-0">Over 1,000+ students and tutors already connected</p>
+              <div class="bg-white bg-opacity-90 rounded-3 p-4 shadow-lg">
+                <i class="bi bi-mortarboard display-1 mb-3 text-primary"></i>
+                <h3 class="h4 text-dark fw-bold">Join Our Community</h3>
+                <p class="mb-0 text-muted">Over 1,000+ students and tutors already connected</p>
               </div>
             </div>
           </div>
@@ -616,7 +659,7 @@ function getHomePageHTML() {
 // Find Tutors page
 function getFindTutorsPageHTML() {
   return `
-    <div class="min-vh-100 bg-light">
+    <div class="min-vh-100 bg-gradient-app">
       <!-- Header Section -->
       <div class="bg-white shadow-sm border-bottom">
         <div class="container py-4">
@@ -733,10 +776,10 @@ async function loadTutors() {
   
   try {
     // Try to load from API first
-    const response = await fetch('http://localhost:5000/api/tutors');
+    const response = await fetch('http://localhost:5001/api/tutors');
     if (response.ok) {
       const data = await response.json();
-      AppState.tutors = data.map(tutor => ({
+      const apiTutors = data.map(tutor => ({
         id: tutor.id,
         name: tutor.name,
         major: tutor.major,
@@ -750,6 +793,17 @@ async function loadTutors() {
         availability: tutor.availability,
         isVerified: tutor.isVerified
       }));
+      
+      // Merge API tutors with existing tutors (from localStorage)
+      const existingTutors = [...AppState.tutors];
+      AppState.tutors = apiTutors;
+      
+      // Add any tutors from localStorage that aren't in the API
+      existingTutors.forEach(localTutor => {
+        if (!AppState.tutors.find(t => t.id === localTutor.id)) {
+          AppState.tutors.push(localTutor);
+        }
+      });
     } else {
       throw new Error('API not available');
     }
@@ -806,26 +860,26 @@ function getTutorCardHTML(tutor) {
       <div class="card tutor-card h-100 shadow-hover">
         <div class="card-body p-4">
           <!-- Header with Avatar and Status -->
-          <div class="d-flex justify-content-between align-items-start mb-3">
-            <div class="d-flex align-items-start">
+          <div class="tutor-card-header">
+            <div class="tutor-card-info">
               <div class="tutor-avatar me-3">
                 ${tutor.name.charAt(0)}
               </div>
-              <div class="flex-grow-1">
-                <h5 class="card-title mb-1">${tutor.name}</h5>
-                <div class="d-flex align-items-center text-muted small mb-1">
-                  <span class="text-truncate">${tutor.major}</span>
+              <div class="flex-grow-1 min-width-0">
+                <h5 class="tutor-card-name">${tutor.name}</h5>
+                <div class="tutor-card-details">
+                  <span>${tutor.major}</span>
                   <span class="mx-2">•</span>
                   <span>${tutor.year}</span>
                 </div>
-                ${tutor.university ? `<p class="small text-muted mb-0">${tutor.university}</p>` : ''}
+                ${tutor.university ? `<div class="tutor-card-university">${tutor.university}</div>` : ''}
               </div>
             </div>
             
             ${tutor.isVerified ? `
-              <div class="badge bg-primary bg-opacity-10 text-primary">
-                <i class="bi bi-check-circle-fill me-1"></i>
-                Verified
+              <div class="tutor-verified-badge">
+                <i class="bi bi-check-circle-fill"></i>
+                <span>Verified</span>
               </div>
             ` : ''}
           </div>
@@ -974,7 +1028,7 @@ function debounce(func, wait) {
 // Placeholder functions for other pages
 function getLoginPageHTML() {
   return `
-    <div class="min-vh-100 bg-light d-flex align-items-center py-5">
+    <div class="min-vh-100 bg-gradient-app d-flex align-items-center py-5">
       <div class="container">
         <div class="row justify-content-center">
           <div class="col-md-6 col-lg-5">
@@ -1066,7 +1120,7 @@ async function handleLogin(e) {
 // Signup page
 function getSignupPageHTML() {
   return `
-    <div class="min-vh-100 bg-light d-flex align-items-center py-5">
+    <div class="min-vh-100 bg-gradient-app d-flex align-items-center py-5">
       <div class="container">
         <div class="row justify-content-center">
           <div class="col-md-8 col-lg-6">
@@ -1283,7 +1337,7 @@ function updateRateSlider() {
 
 function getBecomeTutorPageHTML() {
   return `
-    <div class="min-vh-100 bg-light">
+    <div class="min-vh-100 bg-gradient-app">
       <!-- Hero Section -->
       <div class="bg-gradient-primary text-white py-5">
         <div class="container">
@@ -1300,10 +1354,10 @@ function getBecomeTutorPageHTML() {
               </div>
             </div>
             <div class="col-lg-6 text-center">
-              <div class="bg-white bg-opacity-10 rounded-3 p-4">
-                <i class="bi bi-mortarboard display-1 mb-3"></i>
-                <h3 class="h4">Start Earning Today</h3>
-                <p class="mb-0">Average tutor earns $35-60/hour</p>
+              <div class="bg-white bg-opacity-90 rounded-3 p-4 shadow-lg">
+                <i class="bi bi-mortarboard display-1 mb-3 text-primary"></i>
+                <h3 class="h4 text-dark fw-bold">Start Earning Today</h3>
+                <p class="mb-0 text-muted">Average tutor earns $35-60/hour</p>
               </div>
             </div>
           </div>
@@ -1487,7 +1541,7 @@ function getBecomeTutorPageHTML() {
 }
 function getHowItWorksPageHTML() {
   return `
-    <div class="min-vh-100 bg-light">
+    <div class="min-vh-100 bg-gradient-app">
       <div class="bg-white py-5">
         <div class="container">
           <div class="row justify-content-center">
@@ -1632,7 +1686,7 @@ function getHowItWorksPageHTML() {
 }
 function getSupportPageHTML() {
   return `
-    <div class="min-vh-100 bg-light">
+    <div class="min-vh-100 bg-gradient-app">
       <div class="bg-white py-5">
         <div class="container">
           <div class="row justify-content-center">
@@ -1807,11 +1861,2227 @@ function getSupportPageHTML() {
     </div>
   `;
 }
-function getDashboardPageHTML() { return '<div class="container py-5"><h1>Dashboard Page</h1></div>'; }
-function getProfilePageHTML() { return '<div class="container py-5"><h1>Profile Page</h1></div>'; }
-function getBookingsPageHTML() { return '<div class="container py-5"><h1>Bookings Page</h1></div>'; }
-function getMessagesPageHTML() { return '<div class="container py-5"><h1>Messages Page</h1></div>'; }
-function getSettingsPageHTML() { return '<div class="container py-5"><h1>Settings Page</h1></div>'; }
+function getDashboardPageHTML() {
+  const user = AppState.currentUser;
+  const userName = user ? `${user.firstName} ${user.lastName}` : 'User';
+  const userType = user ? user.userType : 'student';
+  
+  // Return tutor dashboard if user is a tutor
+  if (userType === 'tutor') {
+    return getTutorDashboardHTML(userName);
+  }
+  
+  return `
+    <div class="min-vh-100 bg-gradient-app">
+      <!-- Dashboard Header -->
+      <div class="container py-5">
+        <div class="row mb-4">
+          <div class="col-lg-8">
+            <h1 class="h2 fw-bold text-dark mb-2">Welcome back, ${userName}!</h1>
+            <p class="text-muted mb-0">Here's your student dashboard - track your learning progress and manage your tutoring sessions</p>
+          </div>
+        </div>
+        <div class="row">
+          <!-- Quick Stats -->
+          <div class="col-lg-8">
+            <div class="row g-4 mb-5">
+              <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-body text-center p-4">
+                    <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                      <i class="bi bi-calendar-check display-6 text-primary"></i>
+                    </div>
+                    <h3 class="h4 fw-bold text-dark mb-1">3</h3>
+                    <p class="text-muted mb-0">Upcoming Sessions</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-body text-center p-4">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                      <i class="bi bi-clock-history display-6 text-success"></i>
+                    </div>
+                    <h3 class="h4 fw-bold text-dark mb-1">24</h3>
+                    <p class="text-muted mb-0">Hours Completed</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-body text-center p-4">
+                    <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                      <i class="bi bi-currency-dollar display-6 text-info"></i>
+                    </div>
+                    <h3 class="h4 fw-bold text-dark mb-1">$1,080</h3>
+                    <p class="text-muted mb-0">Total Invested</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Recent Activity</h3>
+              </div>
+              <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                  <div class="list-group-item border-0 py-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-check-circle text-success"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Session Completed</h6>
+                        <p class="text-muted mb-0 small">Mathematics with Sarah Johnson - 2 hours</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-semibold text-success">Completed</div>
+                        <div class="small text-muted">2 hours ago</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="list-group-item border-0 py-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-calendar-plus text-primary"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">New Booking</h6>
+                        <p class="text-muted mb-0 small">Computer Science with Michael Chen - Tomorrow</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-semibold text-primary">$110</div>
+                        <div class="small text-muted">1 day ago</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="list-group-item border-0 py-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-star text-warning"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Session Rated</h6>
+                        <p class="text-muted mb-0 small">5-star rating for Sarah Johnson</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-semibold text-warning">5.0</div>
+                        <div class="small text-muted">3 days ago</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Study Progress -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Study Progress</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-calculator text-primary"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Mathematics</h6>
+                        <div class="progress" style="height: 6px;">
+                          <div class="progress-bar bg-primary" style="width: 75%"></div>
+                        </div>
+                        <small class="text-muted">12 hours completed</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-laptop text-success"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Computer Science</h6>
+                        <div class="progress" style="height: 6px;">
+                          <div class="progress-bar bg-success" style="width: 60%"></div>
+                        </div>
+                        <small class="text-muted">8 hours completed</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar -->
+          <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Quick Actions</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-grid gap-3">
+                  <button class="btn btn-primary" onclick="navigateTo('find-tutors')">
+                    <i class="bi bi-search me-2"></i>Find Tutors
+                  </button>
+                  <button class="btn btn-outline-primary" onclick="navigateTo('bookings')">
+                    <i class="bi bi-calendar-check me-2"></i>My Bookings
+                  </button>
+                  <button class="btn btn-outline-primary" onclick="navigateTo('messages')">
+                    <i class="bi bi-chat-dots me-2"></i>Messages
+                  </button>
+                  <button class="btn btn-outline-primary" onclick="navigateTo('profile')">
+                    <i class="bi bi-person me-2"></i>Edit Profile
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upcoming Sessions -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Upcoming Sessions</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Sarah Johnson</h6>
+                    <p class="text-muted mb-0 small">Mathematics</p>
+                  </div>
+                  <div class="text-end">
+                    <div class="fw-semibold text-dark">Tomorrow</div>
+                    <div class="small text-muted">2:00 PM</div>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-success"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Michael Chen</h6>
+                    <p class="text-muted mb-0 small">Computer Science</p>
+                  </div>
+                  <div class="text-end">
+                    <div class="fw-semibold text-dark">Friday</div>
+                    <div class="small text-muted">10:00 AM</div>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-info"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Emily Rodriguez</h6>
+                    <p class="text-muted mb-0 small">Biology</p>
+                  </div>
+                  <div class="text-end">
+                    <div class="fw-semibold text-dark">Next Week</div>
+                    <div class="small text-muted">3:00 PM</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recommended Tutors -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Recommended Tutors</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-gradient-primary rounded-circle d-flex align-items-center justify-content-center me-3 text-white fw-medium" style="width: 40px; height: 40px; font-size: 0.875rem;">
+                    SJ
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Sarah Johnson</h6>
+                    <p class="text-muted mb-0 small">Mathematics • 4.9★</p>
+                  </div>
+                  <button class="btn btn-sm btn-outline-primary">Book</button>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-gradient-success rounded-circle d-flex align-items-center justify-content-center me-3 text-white fw-medium" style="width: 40px; height: 40px; font-size: 0.875rem;">
+                    MC
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Michael Chen</h6>
+                    <p class="text-muted mb-0 small">Computer Science • 4.8★</p>
+                  </div>
+                  <button class="btn btn-sm btn-outline-primary">Book</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getTutorDashboardHTML(userName) {
+  return `
+    <div class="min-vh-100 bg-gradient-app">
+      <!-- Dashboard Header -->
+      <div class="container py-5">
+        <div class="row mb-4">
+          <div class="col-lg-8">
+            <h1 class="h2 fw-bold text-dark mb-2">Welcome back, ${userName}!</h1>
+            <p class="text-muted mb-0">Here's your tutor dashboard - manage your students, track earnings, and grow your tutoring business</p>
+          </div>
+        </div>
+        <div class="row">
+          <!-- Quick Stats -->
+          <div class="col-lg-8">
+            <div class="row g-4 mb-5">
+              <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-body text-center p-4">
+                    <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                      <i class="bi bi-calendar-check display-6 text-primary"></i>
+                    </div>
+                    <h3 class="h4 fw-bold text-dark mb-1">5</h3>
+                    <p class="text-muted mb-0">Upcoming Sessions</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-body text-center p-4">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                      <i class="bi bi-currency-dollar display-6 text-success"></i>
+                    </div>
+                    <h3 class="h4 fw-bold text-dark mb-1">$1,250</h3>
+                    <p class="text-muted mb-0">This Month</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-body text-center p-4">
+                    <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                      <i class="bi bi-star-fill display-6 text-info"></i>
+                    </div>
+                    <h3 class="h4 fw-bold text-dark mb-1">4.9</h3>
+                    <p class="text-muted mb-0">Average Rating</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Recent Activity</h3>
+              </div>
+              <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                  <div class="list-group-item border-0 py-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-check-circle text-success"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Session Completed</h6>
+                        <p class="text-muted mb-0 small">Mathematics with John Smith - 2 hours</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-semibold text-success">+$90</div>
+                        <div class="small text-muted">2 hours ago</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="list-group-item border-0 py-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-calendar-plus text-primary"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">New Booking</h6>
+                        <p class="text-muted mb-0 small">Computer Science with Sarah Wilson - Tomorrow</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-semibold text-primary">$110</div>
+                        <div class="small text-muted">1 day ago</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="list-group-item border-0 py-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-star text-warning"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">New Review</h6>
+                        <p class="text-muted mb-0 small">5-star rating from Mike Johnson</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-semibold text-warning">5.0</div>
+                        <div class="small text-muted">3 days ago</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Teaching Performance -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Teaching Performance</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-calculator text-primary"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Mathematics</h6>
+                        <div class="progress" style="height: 6px;">
+                          <div class="progress-bar bg-primary" style="width: 85%"></div>
+                        </div>
+                        <small class="text-muted">12 students • 4.9★ average</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-laptop text-success"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Computer Science</h6>
+                        <div class="progress" style="height: 6px;">
+                          <div class="progress-bar bg-success" style="width: 70%"></div>
+                        </div>
+                        <small class="text-muted">8 students • 4.8★ average</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar -->
+          <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Quick Actions</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-grid gap-3">
+                  <button class="btn btn-primary" onclick="navigateTo('profile')">
+                    <i class="bi bi-person me-2"></i>Update Profile
+                  </button>
+                  <button class="btn btn-outline-primary" onclick="navigateTo('bookings')">
+                    <i class="bi bi-calendar-check me-2"></i>My Sessions
+                  </button>
+                  <button class="btn btn-outline-primary" onclick="navigateTo('messages')">
+                    <i class="bi bi-chat-dots me-2"></i>Messages
+                  </button>
+                  <button class="btn btn-outline-primary" onclick="navigateTo('settings')">
+                    <i class="bi bi-gear me-2"></i>Settings
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upcoming Sessions -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Upcoming Sessions</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">John Smith</h6>
+                    <p class="text-muted mb-0 small">Mathematics</p>
+                  </div>
+                  <div class="text-end">
+                    <div class="fw-semibold text-dark">Tomorrow</div>
+                    <div class="small text-muted">2:00 PM</div>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-success"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Sarah Wilson</h6>
+                    <p class="text-muted mb-0 small">Computer Science</p>
+                  </div>
+                  <div class="text-end">
+                    <div class="fw-semibold text-dark">Friday</div>
+                    <div class="small text-muted">10:00 AM</div>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-info"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Mike Johnson</h6>
+                    <p class="text-muted mb-0 small">Physics</p>
+                  </div>
+                  <div class="text-end">
+                    <div class="fw-semibold text-dark">Next Week</div>
+                    <div class="small text-muted">3:00 PM</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Student Requests -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Student Requests</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-warning"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Alex Brown</h6>
+                    <p class="text-muted mb-0 small">Calculus • 2 hours</p>
+                  </div>
+                  <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-success">Accept</button>
+                    <button class="btn btn-sm btn-outline-danger">Decline</button>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-info"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Emma Davis</h6>
+                    <p class="text-muted mb-0 small">Data Structures • 1.5 hours</p>
+                  </div>
+                  <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-success">Accept</button>
+                    <button class="btn btn-sm btn-outline-danger">Decline</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getProfilePageHTML() {
+  const user = AppState.currentUser;
+  const userName = user ? `${user.firstName} ${user.lastName}` : 'User';
+  const userType = user ? user.userType : 'student';
+  
+  // Return tutor profile if user is a tutor
+  if (userType === 'tutor') {
+    return getTutorProfileHTML(userName);
+  }
+  
+  return `
+    <div class="min-vh-100 bg-gradient-app">
+      <div class="container py-5">
+        <div class="row">
+          <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Personal Information</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">First Name</label>
+                    <input type="text" class="form-control" value="${user ? user.firstName : ''}" readonly>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Last Name</label>
+                    <input type="text" class="form-control" value="${user ? user.lastName : ''}" readonly>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Email</label>
+                    <input type="email" class="form-control" value="${user ? user.email : ''}" readonly>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">University</label>
+                    <input type="text" class="form-control" value="${user ? user.university || 'Not specified' : 'Not specified'}" readonly>
+                  </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                  <button class="btn btn-primary">Edit Profile</button>
+                  <button class="btn btn-outline-secondary">Change Password</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Study Preferences</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Subjects of Interest</label>
+                    <div class="d-flex flex-wrap gap-2">
+                      <span class="badge bg-primary">Mathematics</span>
+                      <span class="badge bg-primary">Computer Science</span>
+                      <span class="badge bg-primary">Physics</span>
+                    </div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Learning Style</label>
+                    <p class="text-muted mb-0">Visual learner, prefers hands-on practice</p>
+                  </div>
+                </div>
+                <button class="btn btn-outline-primary">Update Preferences</button>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Academic Goals</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="mb-3">
+                  <label class="form-label fw-semibold">Current Goals</label>
+                  <p class="text-muted">Improve calculus understanding, prepare for computer science exams, learn data structures</p>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold">Target GPA</label>
+                  <p class="text-muted">3.8+</p>
+                </div>
+                <button class="btn btn-outline-primary">Set New Goals</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Profile Summary</h3>
+              </div>
+              <div class="card-body p-4 text-center">
+                <div class="bg-gradient-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3 text-white fw-bold" style="width: 80px; height: 80px; font-size: 1.5rem;">
+                  ${user ? user.firstName.charAt(0) : 'U'}
+                </div>
+                <h4 class="fw-bold text-dark mb-1">${userName}</h4>
+                <p class="text-muted mb-3">Student Account</p>
+                <div class="d-grid gap-2">
+                  <button class="btn btn-primary">Edit Profile</button>
+                  <button class="btn btn-outline-secondary">View Activity</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Tutoring History</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Sarah Johnson</h6>
+                    <p class="text-muted mb-0 small">Mathematics • 12 sessions</p>
+                  </div>
+                  <div class="text-end">
+                    <div class="fw-semibold text-warning">5.0★</div>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-success"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Michael Chen</h6>
+                    <p class="text-muted mb-0 small">Computer Science • 8 sessions</p>
+                  </div>
+                  <div class="text-end">
+                    <div class="fw-semibold text-warning">4.8★</div>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-info"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Emily Rodriguez</h6>
+                    <p class="text-muted mb-0 small">Biology • 4 sessions</p>
+                  </div>
+                  <div class="text-end">
+                    <div class="fw-semibold text-warning">4.9★</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Quick Stats</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row text-center">
+                  <div class="col-6 mb-3">
+                    <h4 class="fw-bold text-primary mb-1">24</h4>
+                    <small class="text-muted">Hours Completed</small>
+                  </div>
+                  <div class="col-6 mb-3">
+                    <h4 class="fw-bold text-success mb-1">12</h4>
+                    <small class="text-muted">Sessions</small>
+                  </div>
+                  <div class="col-6">
+                    <h4 class="fw-bold text-warning mb-1">4.9</h4>
+                    <small class="text-muted">Avg Rating</small>
+                  </div>
+                  <div class="col-6">
+                    <h4 class="fw-bold text-info mb-1">3</h4>
+                    <small class="text-muted">Tutors</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getTutorProfileHTML(userName) {
+  return `
+    <div class="min-vh-100 bg-gradient-app">
+      <div class="container py-5">
+        <div class="row">
+          <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Teaching Information</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Subjects Taught</label>
+                    <div class="d-flex flex-wrap gap-2">
+                      <span class="badge bg-primary">Mathematics</span>
+                      <span class="badge bg-primary">Computer Science</span>
+                      <span class="badge bg-primary">Physics</span>
+                    </div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Hourly Rate</label>
+                    <input type="text" class="form-control" value="$45/hour" readonly>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Availability</label>
+                    <p class="text-muted mb-0">Monday-Friday: 2:00 PM - 8:00 PM<br>Weekends: 10:00 AM - 6:00 PM</p>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Teaching Experience</label>
+                    <p class="text-muted mb-0">3+ years of tutoring experience</p>
+                  </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                  <button class="btn btn-primary">Edit Profile</button>
+                  <button class="btn btn-outline-secondary">Update Availability</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Teaching Philosophy</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="mb-3">
+                  <label class="form-label fw-semibold">Teaching Approach</label>
+                  <p class="text-muted">I believe in making complex concepts simple and engaging. I focus on building strong foundations and helping students develop problem-solving skills.</p>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold">Specialties</label>
+                  <p class="text-muted">Calculus, Linear Algebra, Data Structures, Algorithms, Web Development</p>
+                </div>
+                <button class="btn btn-outline-primary">Update Philosophy</button>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Student Feedback</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">John Smith</h6>
+                    <p class="text-muted mb-0 small">Mathematics • 5★</p>
+                    <p class="text-muted small">"Excellent tutor! Made calculus so much clearer."</p>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-success"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Sarah Wilson</h6>
+                    <p class="text-muted mb-0 small">Computer Science • 5★</p>
+                    <p class="text-muted small">"Great at explaining data structures and algorithms."</p>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-info"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Mike Johnson</h6>
+                    <p class="text-muted mb-0 small">Physics • 4★</p>
+                    <p class="text-muted small">"Very patient and knowledgeable tutor."</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Profile Summary</h3>
+              </div>
+              <div class="card-body p-4 text-center">
+                <div class="bg-gradient-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3 text-white fw-bold" style="width: 80px; height: 80px; font-size: 1.5rem;">
+                  ${AppState.currentUser ? AppState.currentUser.firstName.charAt(0) : 'T'}
+                </div>
+                <h4 class="fw-bold text-dark mb-1">${userName}</h4>
+                <p class="text-muted mb-3">Tutor Account</p>
+                <div class="d-grid gap-2">
+                  <button class="btn btn-primary">Edit Profile</button>
+                  <button class="btn btn-outline-secondary">View Analytics</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Teaching Stats</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row text-center">
+                  <div class="col-6 mb-3">
+                    <h4 class="fw-bold text-primary mb-1">24</h4>
+                    <small class="text-muted">Students</small>
+                  </div>
+                  <div class="col-6 mb-3">
+                    <h4 class="fw-bold text-success mb-1">156</h4>
+                    <small class="text-muted">Sessions</small>
+                  </div>
+                  <div class="col-6">
+                    <h4 class="fw-bold text-warning mb-1">4.9</h4>
+                    <small class="text-muted">Rating</small>
+                  </div>
+                  <div class="col-6">
+                    <h4 class="fw-bold text-info mb-1">$7,020</h4>
+                    <small class="text-muted">Earned</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Quick Actions</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-grid gap-2">
+                  <button class="btn btn-outline-primary">Update Availability</button>
+                  <button class="btn btn-outline-primary">Set Rates</button>
+                  <button class="btn btn-outline-primary">View Analytics</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getBookingsPageHTML() {
+  const user = AppState.currentUser;
+  const userType = user ? user.userType : 'student';
+  
+  // Return tutor bookings if user is a tutor
+  if (userType === 'tutor') {
+    return getTutorBookingsHTML();
+  }
+  
+  return `
+    <div class="min-vh-100 bg-gradient-app">
+      <div class="container py-5">
+        <div class="row mb-4">
+          <div class="col-lg-8">
+            <h1 class="h2 fw-bold text-dark mb-2">My Bookings</h1>
+            <p class="text-muted mb-0">Manage your tutoring sessions and track your learning progress</p>
+          </div>
+          <div class="col-lg-4 text-end">
+            <button class="btn btn-primary" onclick="navigateTo('find-tutors')">
+              <i class="bi bi-plus-circle me-2"></i>Book New Session
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <ul class="nav nav-pills" id="bookingTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming" type="button" role="tab">
+                  Upcoming Sessions
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="past-tab" data-bs-toggle="pill" data-bs-target="#past" type="button" role="tab">
+                  Past Sessions
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="history-tab" data-bs-toggle="pill" data-bs-target="#history" type="button" role="tab">
+                  Booking History
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="bookingTabsContent">
+          <!-- Upcoming Sessions -->
+          <div class="tab-pane fade show active" id="upcoming" role="tabpanel">
+            <div class="row">
+              <div class="col-lg-8">
+                <div class="card border-0 shadow-sm mb-4">
+                  <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                      <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-person text-primary"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h5 class="fw-bold text-dark mb-1">Sarah Johnson</h5>
+                        <p class="text-muted mb-0">Mathematics • Stanford University</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-bold text-primary">Tomorrow</div>
+                        <div class="text-muted small">2:00 PM - 4:00 PM</div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Subject:</strong> Calculus II</p>
+                        <p class="mb-1"><strong>Duration:</strong> 2 hours</p>
+                        <p class="mb-0"><strong>Rate:</strong> $45/hour</p>
+                      </div>
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Total Cost:</strong> $90</p>
+                        <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">Confirmed</span></p>
+                        <p class="mb-0"><strong>Location:</strong> Online</p>
+                      </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                      <button class="btn btn-outline-primary btn-sm">Reschedule</button>
+                      <button class="btn btn-outline-danger btn-sm">Cancel</button>
+                      <button class="btn btn-primary btn-sm">Join Session</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                  <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-person text-success"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h5 class="fw-bold text-dark mb-1">Michael Chen</h5>
+                        <p class="text-muted mb-0">Computer Science • MIT</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-bold text-success">Friday</div>
+                        <div class="text-muted small">10:00 AM - 12:00 PM</div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Subject:</strong> Data Structures</p>
+                        <p class="mb-1"><strong>Duration:</strong> 2 hours</p>
+                        <p class="mb-0"><strong>Rate:</strong> $55/hour</p>
+                      </div>
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Total Cost:</strong> $110</p>
+                        <p class="mb-1"><strong>Status:</strong> <span class="badge bg-warning">Pending</span></p>
+                        <p class="mb-0"><strong>Location:</strong> Online</p>
+                      </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                      <button class="btn btn-outline-primary btn-sm">Reschedule</button>
+                      <button class="btn btn-outline-danger btn-sm">Cancel</button>
+                      <button class="btn btn-outline-secondary btn-sm" disabled>Join Session</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <div class="card border-0 shadow-sm">
+                  <div class="card-header bg-white border-0 py-4">
+                    <h3 class="h5 fw-bold text-dark mb-0">Quick Stats</h3>
+                  </div>
+                  <div class="card-body p-4">
+                    <div class="row text-center">
+                      <div class="col-6 mb-3">
+                        <h4 class="fw-bold text-primary mb-1">3</h4>
+                        <small class="text-muted">Upcoming</small>
+                      </div>
+                      <div class="col-6 mb-3">
+                        <h4 class="fw-bold text-success mb-1">12</h4>
+                        <small class="text-muted">Completed</small>
+                      </div>
+                      <div class="col-6">
+                        <h4 class="fw-bold text-warning mb-1">$1,080</h4>
+                        <small class="text-muted">Total Spent</small>
+                      </div>
+                      <div class="col-6">
+                        <h4 class="fw-bold text-info mb-1">24h</h4>
+                        <small class="text-muted">Hours</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Past Sessions -->
+          <div class="tab-pane fade" id="past" role="tabpanel">
+            <div class="row">
+              <div class="col-lg-8">
+                <div class="card border-0 shadow-sm mb-4">
+                  <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-person text-success"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h5 class="fw-bold text-dark mb-1">Sarah Johnson</h5>
+                        <p class="text-muted mb-0">Mathematics • Stanford University</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-bold text-success">Completed</div>
+                        <div class="text-muted small">2 hours ago</div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Subject:</strong> Calculus II</p>
+                        <p class="mb-1"><strong>Duration:</strong> 2 hours</p>
+                        <p class="mb-0"><strong>Rate:</strong> $45/hour</p>
+                      </div>
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Total Cost:</strong> $90</p>
+                        <p class="mb-1"><strong>Your Rating:</strong> <span class="text-warning">★★★★★</span></p>
+                        <p class="mb-0"><strong>Status:</strong> <span class="badge bg-success">Completed</span></p>
+                      </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                      <button class="btn btn-outline-primary btn-sm">Book Again</button>
+                      <button class="btn btn-outline-secondary btn-sm">View Details</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Booking History -->
+          <div class="tab-pane fade" id="history" role="tabpanel">
+            <div class="row">
+              <div class="col-lg-8">
+                <div class="card border-0 shadow-sm">
+                  <div class="card-header bg-white border-0 py-4">
+                    <h3 class="h5 fw-bold text-dark mb-0">Payment History</h3>
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                      <div class="list-group-item border-0 py-3">
+                        <div class="d-flex align-items-center">
+                          <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                            <i class="bi bi-check-circle text-success"></i>
+                          </div>
+                          <div class="flex-grow-1">
+                            <h6 class="mb-1 fw-semibold">Sarah Johnson - Mathematics</h6>
+                            <p class="text-muted mb-0 small">2 hours • Calculus II</p>
+                          </div>
+                          <div class="text-end">
+                            <div class="fw-semibold text-success">$90</div>
+                            <div class="small text-muted">2 hours ago</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="list-group-item border-0 py-3">
+                        <div class="d-flex align-items-center">
+                          <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                            <i class="bi bi-calendar-check text-primary"></i>
+                          </div>
+                          <div class="flex-grow-1">
+                            <h6 class="mb-1 fw-semibold">Michael Chen - Computer Science</h6>
+                            <p class="text-muted mb-0 small">2 hours • Data Structures</p>
+                          </div>
+                          <div class="text-end">
+                            <div class="fw-semibold text-primary">$110</div>
+                            <div class="small text-muted">1 week ago</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getTutorBookingsHTML() {
+  return `
+    <div class="min-vh-100 bg-gradient-app">
+      <div class="container py-5">
+        <div class="row mb-4">
+          <div class="col-lg-8">
+            <h1 class="h2 fw-bold text-dark mb-2">My Sessions</h1>
+            <p class="text-muted mb-0">Manage your tutoring sessions and track your teaching schedule</p>
+          </div>
+          <div class="col-lg-4 text-end">
+            <button class="btn btn-primary">
+              <i class="bi bi-plus-circle me-2"></i>Set Availability
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <ul class="nav nav-pills" id="tutorBookingTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming" type="button" role="tab">
+                  Upcoming Sessions
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="past-tab" data-bs-toggle="pill" data-bs-target="#past" type="button" role="tab">
+                  Past Sessions
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="requests-tab" data-bs-toggle="pill" data-bs-target="#requests" type="button" role="tab">
+                  Student Requests
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="tutorBookingTabsContent">
+          <!-- Upcoming Sessions -->
+          <div class="tab-pane fade show active" id="upcoming" role="tabpanel">
+            <div class="row">
+              <div class="col-lg-8">
+                <div class="card border-0 shadow-sm mb-4">
+                  <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                      <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-person text-primary"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h5 class="fw-bold text-dark mb-1">John Smith</h5>
+                        <p class="text-muted mb-0">Mathematics • University of California</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-bold text-primary">Tomorrow</div>
+                        <div class="text-muted small">2:00 PM - 4:00 PM</div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Subject:</strong> Calculus II</p>
+                        <p class="mb-1"><strong>Duration:</strong> 2 hours</p>
+                        <p class="mb-0"><strong>Your Rate:</strong> $45/hour</p>
+                      </div>
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Your Earnings:</strong> $90</p>
+                        <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">Confirmed</span></p>
+                        <p class="mb-0"><strong>Location:</strong> Online</p>
+                      </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                      <button class="btn btn-outline-primary btn-sm">Reschedule</button>
+                      <button class="btn btn-outline-danger btn-sm">Cancel</button>
+                      <button class="btn btn-primary btn-sm">Start Session</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                  <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-person text-success"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h5 class="fw-bold text-dark mb-1">Sarah Wilson</h5>
+                        <p class="text-muted mb-0">Computer Science • Stanford University</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-bold text-success">Friday</div>
+                        <div class="text-muted small">10:00 AM - 12:00 PM</div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Subject:</strong> Data Structures</p>
+                        <p class="mb-1"><strong>Duration:</strong> 2 hours</p>
+                        <p class="mb-0"><strong>Your Rate:</strong> $45/hour</p>
+                      </div>
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Your Earnings:</strong> $90</p>
+                        <p class="mb-1"><strong>Status:</strong> <span class="badge bg-warning">Pending</span></p>
+                        <p class="mb-0"><strong>Location:</strong> Online</p>
+                      </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                      <button class="btn btn-outline-primary btn-sm">Reschedule</button>
+                      <button class="btn btn-outline-danger btn-sm">Cancel</button>
+                      <button class="btn btn-outline-secondary btn-sm" disabled>Start Session</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <div class="card border-0 shadow-sm">
+                  <div class="card-header bg-white border-0 py-4">
+                    <h3 class="h5 fw-bold text-dark mb-0">Quick Stats</h3>
+                  </div>
+                  <div class="card-body p-4">
+                    <div class="row text-center">
+                      <div class="col-6 mb-3">
+                        <h4 class="fw-bold text-primary mb-1">5</h4>
+                        <small class="text-muted">Upcoming</small>
+                      </div>
+                      <div class="col-6 mb-3">
+                        <h4 class="fw-bold text-success mb-1">156</h4>
+                        <small class="text-muted">Completed</small>
+                      </div>
+                      <div class="col-6">
+                        <h4 class="fw-bold text-warning mb-1">$7,020</h4>
+                        <small class="text-muted">Total Earned</small>
+                      </div>
+                      <div class="col-6">
+                        <h4 class="fw-bold text-info mb-1">24</h4>
+                        <small class="text-muted">Students</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Past Sessions -->
+          <div class="tab-pane fade" id="past" role="tabpanel">
+            <div class="row">
+              <div class="col-lg-8">
+                <div class="card border-0 shadow-sm mb-4">
+                  <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-person text-success"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h5 class="fw-bold text-dark mb-1">Mike Johnson</h5>
+                        <p class="text-muted mb-0">Physics • MIT</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-bold text-success">Completed</div>
+                        <div class="text-muted small">2 hours ago</div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Subject:</strong> Mechanics</p>
+                        <p class="mb-1"><strong>Duration:</strong> 1.5 hours</p>
+                        <p class="mb-0"><strong>Your Rate:</strong> $45/hour</p>
+                      </div>
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Your Earnings:</strong> $67.50</p>
+                        <p class="mb-1"><strong>Student Rating:</strong> <span class="text-warning">★★★★★</span></p>
+                        <p class="mb-0"><strong>Status:</strong> <span class="badge bg-success">Completed</span></p>
+                      </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                      <button class="btn btn-outline-primary btn-sm">Book Again</button>
+                      <button class="btn btn-outline-secondary btn-sm">View Details</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Student Requests -->
+          <div class="tab-pane fade" id="requests" role="tabpanel">
+            <div class="row">
+              <div class="col-lg-8">
+                <div class="card border-0 shadow-sm mb-4">
+                  <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                      <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-person text-warning"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h5 class="fw-bold text-dark mb-1">Alex Brown</h5>
+                        <p class="text-muted mb-0">Calculus • University of Texas</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-bold text-warning">Pending</div>
+                        <div class="text-muted small">2 hours • $90</div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Subject:</strong> Calculus I</p>
+                        <p class="mb-1"><strong>Duration:</strong> 2 hours</p>
+                        <p class="mb-0"><strong>Requested Time:</strong> Tomorrow 3:00 PM</p>
+                      </div>
+                      <div class="col-md-6">
+                        <p class="mb-1"><strong>Your Rate:</strong> $45/hour</p>
+                        <p class="mb-1"><strong>Your Earnings:</strong> $90</p>
+                        <p class="mb-0"><strong>Location:</strong> Online</p>
+                      </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                      <button class="btn btn-success btn-sm">Accept</button>
+                      <button class="btn btn-outline-danger btn-sm">Decline</button>
+                      <button class="btn btn-outline-primary btn-sm">Counter Offer</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getMessagesPageHTML() {
+  const user = AppState.currentUser;
+  const userType = user ? user.userType : 'student';
+  
+  // Return tutor messages if user is a tutor
+  if (userType === 'tutor') {
+    return getTutorMessagesHTML();
+  }
+  
+  return `
+    <div class="min-vh-100 bg-gradient-app">
+      <div class="container py-5">
+        <div class="row mb-4">
+          <div class="col-lg-8">
+            <h1 class="h2 fw-bold text-dark mb-2">Messages</h1>
+            <p class="text-muted mb-0">Communicate with your tutors and manage your conversations</p>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-4">
+            <!-- Conversations List -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Conversations</h3>
+              </div>
+              <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                  <div class="list-group-item border-0 py-3 active">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-person text-primary"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Sarah Johnson</h6>
+                        <p class="text-muted mb-0 small">Mathematics • Stanford University</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="badge bg-primary rounded-pill">2</div>
+                        <div class="small text-muted">2 min ago</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="list-group-item border-0 py-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-person text-success"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Michael Chen</h6>
+                        <p class="text-muted mb-0 small">Computer Science • MIT</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="small text-muted">1 hour ago</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="list-group-item border-0 py-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-person text-info"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Emily Rodriguez</h6>
+                        <p class="text-muted mb-0 small">Biology • UC Berkeley</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="small text-muted">3 hours ago</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notifications -->
+            <div class="card border-0 shadow-sm mt-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Notifications</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-calendar text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold small">Session Reminder</h6>
+                    <p class="text-muted mb-0 small">Mathematics with Sarah Johnson tomorrow at 2:00 PM</p>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-check-circle text-success"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold small">Session Confirmed</h6>
+                    <p class="text-muted mb-0 small">Michael Chen confirmed your Friday session</p>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-star text-warning"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold small">Rate Your Session</h6>
+                    <p class="text-muted mb-0 small">Rate your recent session with Sarah Johnson</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <!-- Chat Interface -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <div class="d-flex align-items-center">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h5 class="fw-bold text-dark mb-1">Sarah Johnson</h5>
+                    <p class="text-muted mb-0 small">Mathematics • Stanford University</p>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary btn-sm">Video Call</button>
+                    <button class="btn btn-outline-secondary btn-sm">Info</button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body p-4" style="height: 400px; overflow-y: auto;">
+                <!-- Chat Messages -->
+                <div class="d-flex align-items-start mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="bg-light rounded-3 p-3">
+                      <p class="mb-0">Hi! I'm looking forward to our session tomorrow. What topics would you like to focus on?</p>
+                    </div>
+                    <small class="text-muted">Sarah Johnson • 2:30 PM</small>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-start mb-3 justify-content-end">
+                  <div class="flex-grow-1 text-end">
+                    <div class="bg-primary text-white rounded-3 p-3">
+                      <p class="mb-0">Hi Sarah! I'd like to focus on integration techniques and differential equations. I'm struggling with the substitution method.</p>
+                    </div>
+                    <small class="text-muted">You • 2:32 PM</small>
+                  </div>
+                  <div class="bg-gradient-primary rounded-circle d-flex align-items-center justify-content-center ms-3 text-white fw-medium" style="width: 30px; height: 30px; font-size: 0.75rem;">
+                    ${AppState.currentUser ? AppState.currentUser.firstName.charAt(0) : 'U'}
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-start mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="bg-light rounded-3 p-3">
+                      <p class="mb-0">Perfect! I'll prepare some practice problems for integration by substitution. We can also review the fundamental theorem of calculus.</p>
+                    </div>
+                    <small class="text-muted">Sarah Johnson • 2:35 PM</small>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-start mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="bg-light rounded-3 p-3">
+                      <p class="mb-0">I'll also bring some visual aids to help explain the concepts. See you tomorrow at 2:00 PM!</p>
+                    </div>
+                    <small class="text-muted">Sarah Johnson • 2:36 PM</small>
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer bg-white border-0 py-3">
+                <div class="input-group">
+                  <input type="text" class="form-control" placeholder="Type your message...">
+                  <button class="btn btn-primary" type="button">
+                    <i class="bi bi-send"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Study Groups -->
+            <div class="card border-0 shadow-sm mt-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Study Groups</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-people text-success"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Calculus Study Group</h6>
+                    <p class="text-muted mb-0 small">5 members • Last active 1 hour ago</p>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm">Join</button>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-people text-info"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Computer Science Study Group</h6>
+                    <p class="text-muted mb-0 small">8 members • Last active 3 hours ago</p>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm">Join</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getTutorMessagesHTML() {
+  return `
+    <div class="min-vh-100 bg-gradient-app">
+      <div class="container py-5">
+        <div class="row mb-4">
+          <div class="col-lg-8">
+            <h1 class="h2 fw-bold text-dark mb-2">Messages</h1>
+            <p class="text-muted mb-0">Communicate with your students and manage your tutoring conversations</p>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-4">
+            <!-- Student Conversations List -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Student Conversations</h3>
+              </div>
+              <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                  <div class="list-group-item border-0 py-3 active">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-person text-primary"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">John Smith</h6>
+                        <p class="text-muted mb-0 small">Mathematics • University of California</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="badge bg-primary rounded-pill">2</div>
+                        <div class="small text-muted">2 min ago</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="list-group-item border-0 py-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-person text-success"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Sarah Wilson</h6>
+                        <p class="text-muted mb-0 small">Computer Science • Stanford University</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="small text-muted">1 hour ago</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="list-group-item border-0 py-3">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-person text-info"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">Mike Johnson</h6>
+                        <p class="text-muted mb-0 small">Physics • MIT</p>
+                      </div>
+                      <div class="text-end">
+                        <div class="small text-muted">3 hours ago</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Teaching Notifications -->
+            <div class="card border-0 shadow-sm mt-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Teaching Notifications</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-calendar text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold small">Session Reminder</h6>
+                    <p class="text-muted mb-0 small">Mathematics with John Smith tomorrow at 2:00 PM</p>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-star text-success"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold small">New Review</h6>
+                    <p class="text-muted mb-0 small">5-star rating from Sarah Wilson</p>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-person-plus text-warning"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold small">New Student Request</h6>
+                    <p class="text-muted mb-0 small">Alex Brown wants to book Calculus session</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <!-- Chat Interface -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <div class="d-flex align-items-center">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h5 class="fw-bold text-dark mb-1">John Smith</h5>
+                    <p class="text-muted mb-0 small">Mathematics • University of California</p>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary btn-sm">Video Call</button>
+                    <button class="btn btn-outline-secondary btn-sm">Student Info</button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body p-4" style="height: 400px; overflow-y: auto;">
+                <!-- Chat Messages -->
+                <div class="d-flex align-items-start mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="bg-light rounded-3 p-3">
+                      <p class="mb-0">Hi! I'm looking forward to our session tomorrow. What topics would you like to focus on?</p>
+                    </div>
+                    <small class="text-muted">John Smith • 2:30 PM</small>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-start mb-3 justify-content-end">
+                  <div class="flex-grow-1 text-end">
+                    <div class="bg-primary text-white rounded-3 p-3">
+                      <p class="mb-0">Hi John! I'd like to focus on integration techniques and differential equations. I'm struggling with the substitution method.</p>
+                    </div>
+                    <small class="text-muted">You • 2:32 PM</small>
+                  </div>
+                  <div class="bg-gradient-primary rounded-circle d-flex align-items-center justify-content-center ms-3 text-white fw-medium" style="width: 30px; height: 30px; font-size: 0.75rem;">
+                    ${AppState.currentUser ? AppState.currentUser.firstName.charAt(0) : 'T'}
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-start mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="bg-light rounded-3 p-3">
+                      <p class="mb-0">Perfect! I'll prepare some practice problems for integration by substitution. We can also review the fundamental theorem of calculus.</p>
+                    </div>
+                    <small class="text-muted">John Smith • 2:35 PM</small>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-start mb-3">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-person text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="bg-light rounded-3 p-3">
+                      <p class="mb-0">I'll also bring some visual aids to help explain the concepts. See you tomorrow at 2:00 PM!</p>
+                    </div>
+                    <small class="text-muted">John Smith • 2:36 PM</small>
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer bg-white border-0 py-3">
+                <div class="input-group">
+                  <input type="text" class="form-control" placeholder="Type your message...">
+                  <button class="btn btn-primary" type="button">
+                    <i class="bi bi-send"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Teaching Groups -->
+            <div class="card border-0 shadow-sm mt-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Teaching Groups</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-people text-success"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Calculus Study Group</h6>
+                    <p class="text-muted mb-0 small">5 students • Last active 1 hour ago</p>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm">Manage</button>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="bi bi-people text-info"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">Computer Science Study Group</h6>
+                    <p class="text-muted mb-0 small">8 students • Last active 3 hours ago</p>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm">Manage</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getSettingsPageHTML() {
+  const user = AppState.currentUser;
+  const userType = user ? user.userType : 'student';
+  
+  // Return tutor settings if user is a tutor
+  if (userType === 'tutor') {
+    return getTutorSettingsHTML();
+  }
+  
+  return `
+    <div class="min-vh-100 bg-gradient-app">
+      <div class="container py-5">
+        <div class="row mb-4">
+          <div class="col-lg-8">
+            <h1 class="h2 fw-bold text-dark mb-2">Settings</h1>
+            <p class="text-muted mb-0">Manage your account preferences and privacy settings</p>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-8">
+            <!-- Account Information -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Account Information</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">First Name</label>
+                    <input type="text" class="form-control" value="${user ? user.firstName : ''}">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Last Name</label>
+                    <input type="text" class="form-control" value="${user ? user.lastName : ''}">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Email</label>
+                    <input type="email" class="form-control" value="${user ? user.email : ''}">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">University</label>
+                    <input type="text" class="form-control" value="${user ? user.university || '' : ''}">
+                  </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                  <button class="btn btn-primary">Save Changes</button>
+                  <button class="btn btn-outline-secondary">Cancel</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notification Preferences -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Notification Preferences</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                  <label class="form-check-label fw-semibold" for="emailNotifications">
+                    Email Notifications
+                  </label>
+                  <p class="text-muted small mb-0">Receive updates about sessions, messages, and account activity</p>
+                </div>
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="sessionReminders" checked>
+                  <label class="form-check-label fw-semibold" for="sessionReminders">
+                    Session Reminders
+                  </label>
+                  <p class="text-muted small mb-0">Get reminded about upcoming tutoring sessions</p>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="messageNotifications" checked>
+                  <label class="form-check-label fw-semibold" for="messageNotifications">
+                    Message Notifications
+                  </label>
+                  <p class="text-muted small mb-0">Notify me when I receive new messages from tutors</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Help & Support -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Help & Support</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <h6 class="fw-semibold mb-2">Frequently Asked Questions</h6>
+                    <p class="text-muted small mb-3">Find answers to common questions about tutoring, payments, and platform features.</p>
+                    <button class="btn btn-outline-primary btn-sm">View FAQ</button>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <h6 class="fw-semibold mb-2">Contact Support</h6>
+                    <p class="text-muted small mb-3">Need help? Our support team is here to assist you with any questions or issues.</p>
+                    <button class="btn btn-outline-primary btn-sm">Contact Us</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <!-- Account Security -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Account Security</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-shield-check text-success"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold small">Password</h6>
+                    <p class="text-muted mb-0 small">Last changed 3 months ago</p>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm">Change</button>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-phone text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold small">Two-Factor Authentication</h6>
+                    <p class="text-muted mb-0 small">Add an extra layer of security</p>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm">Enable</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Account Actions -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Account Actions</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-grid gap-2">
+                  <button class="btn btn-outline-primary">Export Data</button>
+                  <button class="btn btn-outline-warning">Deactivate Account</button>
+                  <button class="btn btn-outline-danger">Delete Account</button>
+                </div>
+                <div class="mt-3">
+                  <small class="text-muted">
+                    <strong>Note:</strong> Account deletion is permanent and cannot be undone.
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getTutorSettingsHTML() {
+  return `
+    <div class="min-vh-100 bg-gradient-app">
+      <div class="container py-5">
+        <div class="row mb-4">
+          <div class="col-lg-8">
+            <h1 class="h2 fw-bold text-dark mb-2">Tutor Settings</h1>
+            <p class="text-muted mb-0">Manage your tutoring preferences, rates, and teaching settings</p>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-8">
+            <!-- Teaching Information -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Teaching Information</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Subjects Taught</label>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                      <span class="badge bg-primary">Mathematics</span>
+                      <span class="badge bg-primary">Computer Science</span>
+                      <span class="badge bg-primary">Physics</span>
+                      <button class="btn btn-outline-primary btn-sm">+ Add Subject</button>
+                    </div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Hourly Rate</label>
+                    <input type="text" class="form-control" value="$45/hour">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Teaching Experience</label>
+                    <input type="text" class="form-control" value="3+ years">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Education Level</label>
+                    <select class="form-select">
+                      <option>Bachelor's Degree</option>
+                      <option>Master's Degree</option>
+                      <option>PhD</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                  <button class="btn btn-primary">Save Changes</button>
+                  <button class="btn btn-outline-secondary">Cancel</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Availability Settings -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Availability Settings</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Available Days</label>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="monday" checked>
+                      <label class="form-check-label" for="monday">Monday</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="tuesday" checked>
+                      <label class="form-check-label" for="tuesday">Tuesday</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="wednesday" checked>
+                      <label class="form-check-label" for="wednesday">Wednesday</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="thursday" checked>
+                      <label class="form-check-label" for="thursday">Thursday</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="friday" checked>
+                      <label class="form-check-label" for="friday">Friday</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="saturday">
+                      <label class="form-check-label" for="saturday">Saturday</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="sunday">
+                      <label class="form-check-label" for="sunday">Sunday</label>
+                    </div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Available Hours</label>
+                    <div class="row">
+                      <div class="col-6">
+                        <label class="form-label small">Start Time</label>
+                        <input type="time" class="form-control" value="14:00">
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small">End Time</label>
+                        <input type="time" class="form-control" value="20:00">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-primary">Update Availability</button>
+              </div>
+            </div>
+
+            <!-- Teaching Preferences -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Teaching Preferences</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Session Duration</label>
+                    <select class="form-select">
+                      <option>1 hour</option>
+                      <option>1.5 hours</option>
+                      <option>2 hours</option>
+                      <option>Flexible</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Teaching Style</label>
+                    <select class="form-select">
+                      <option>Interactive</option>
+                      <option>Lecture-based</option>
+                      <option>Problem-solving focused</option>
+                      <option>Mixed approach</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Preferred Location</label>
+                    <select class="form-select">
+                      <option>Online only</option>
+                      <option>In-person only</option>
+                      <option>Both online and in-person</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Student Level</label>
+                    <select class="form-select">
+                      <option>Beginner</option>
+                      <option>Intermediate</option>
+                      <option>Advanced</option>
+                      <option>All levels</option>
+                    </select>
+                  </div>
+                </div>
+                <button class="btn btn-primary">Update Preferences</button>
+              </div>
+            </div>
+
+            <!-- Notification Preferences -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Notification Preferences</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="sessionReminders" checked>
+                  <label class="form-check-label fw-semibold" for="sessionReminders">
+                    Session Reminders
+                  </label>
+                  <p class="text-muted small mb-0">Get reminded about upcoming tutoring sessions</p>
+                </div>
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="studentRequests" checked>
+                  <label class="form-check-label fw-semibold" for="studentRequests">
+                    Student Requests
+                  </label>
+                  <p class="text-muted small mb-0">Notify me when students request tutoring sessions</p>
+                </div>
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="newReviews" checked>
+                  <label class="form-check-label fw-semibold" for="newReviews">
+                    New Reviews
+                  </label>
+                  <p class="text-muted small mb-0">Notify me when students leave reviews</p>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="paymentNotifications" checked>
+                  <label class="form-check-label fw-semibold" for="paymentNotifications">
+                    Payment Notifications
+                  </label>
+                  <p class="text-muted small mb-0">Notify me about payments and earnings</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <!-- Account Security -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Account Security</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-shield-check text-success"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold small">Password</h6>
+                    <p class="text-muted mb-0 small">Last changed 3 months ago</p>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm">Change</button>
+                </div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 30px; height: 30px;">
+                    <i class="bi bi-phone text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold small">Two-Factor Authentication</h6>
+                    <p class="text-muted mb-0 small">Add an extra layer of security</p>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm">Enable</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Teaching Analytics -->
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Teaching Analytics</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="row text-center">
+                  <div class="col-6 mb-3">
+                    <h4 class="fw-bold text-primary mb-1">24</h4>
+                    <small class="text-muted">Students</small>
+                  </div>
+                  <div class="col-6 mb-3">
+                    <h4 class="fw-bold text-success mb-1">156</h4>
+                    <small class="text-muted">Sessions</small>
+                  </div>
+                  <div class="col-6">
+                    <h4 class="fw-bold text-warning mb-1">4.9</h4>
+                    <small class="text-muted">Rating</small>
+                  </div>
+                  <div class="col-6">
+                    <h4 class="fw-bold text-info mb-1">$7,020</h4>
+                    <small class="text-muted">Earned</small>
+                  </div>
+                </div>
+                <button class="btn btn-outline-primary btn-sm w-100">View Detailed Analytics</button>
+              </div>
+            </div>
+
+            <!-- Account Actions -->
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 py-4">
+                <h3 class="h5 fw-bold text-dark mb-0">Account Actions</h3>
+              </div>
+              <div class="card-body p-4">
+                <div class="d-grid gap-2">
+                  <button class="btn btn-outline-primary">Export Data</button>
+                  <button class="btn btn-outline-warning">Deactivate Account</button>
+                  <button class="btn btn-outline-danger">Delete Account</button>
+                </div>
+                <div class="mt-3">
+                  <small class="text-muted">
+                    <strong>Note:</strong> Account deletion is permanent and cannot be undone.
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 // Booking modal functions
 function openBookingModal(tutorId) {
