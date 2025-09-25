@@ -114,7 +114,7 @@ const mockBookings = [
 
 // Initialize the application
 // Form submission handlers
-function handleTutorApplication(event) {
+async function handleTutorApplication(event) {
   event.preventDefault();
   
   const formData = {
@@ -125,18 +125,58 @@ function handleTutorApplication(event) {
     major: document.getElementById('tutor-major').value,
     year: document.getElementById('tutor-year').value,
     subjects: Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value),
-    hourlyRate: document.getElementById('rate-display').value,
+    hourlyRate: parseFloat(document.getElementById('rate-display').value),
     experience: document.getElementById('tutor-experience').value,
     motivation: document.getElementById('tutor-motivation').value,
     availability: Array.from(document.querySelectorAll('input[name="availability"]:checked')).map(cb => cb.value)
   };
   
-  // Here you would typically send this to your API
-  console.log('Tutor Application:', formData);
-  alert('Thank you for your application! We will review it and get back to you within 2-3 business days.');
-  
-  // Reset form
-  document.getElementById('tutor-application-form').reset();
+  try {
+    // Create user account first
+    const userData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      password: 'tempPassword123', // You might want to generate a random password
+      userType: 'tutor',
+      university: formData.university
+    };
+    
+    // Sign up the user
+    await TutorAppAPI.signup(userData);
+    
+    // Create tutor profile
+    const tutorData = {
+      name: `${formData.firstName} ${formData.lastName}`,
+      major: formData.major,
+      year: formData.year,
+      university: formData.university,
+      subjects: formData.subjects,
+      hourlyRate: formData.hourlyRate,
+      rating: 5.0, // Start with perfect rating
+      reviews: 0,
+      bio: `I am a ${formData.year} ${formData.major} student at ${formData.university}. ${formData.experience} ${formData.motivation}`,
+      availability: formData.availability.length > 0 ? formData.availability.join(', ') : 'Flexible',
+      isVerified: true // Auto-verify new tutors
+    };
+    
+    // Add tutor to the system
+    await TutorAppAPI.createTutor(tutorData);
+    
+    alert('Congratulations! You are now a verified tutor on TutorApp! You can start receiving bookings immediately.');
+    
+    // Reset form
+    document.getElementById('tutor-application-form').reset();
+    
+    // Optionally redirect to dashboard
+    setTimeout(() => {
+      navigateTo('dashboard');
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Error creating tutor account:', error);
+    alert('There was an error creating your tutor account. Please try again or contact support.');
+  }
 }
 
 function handleSupportForm(event) {
@@ -1112,8 +1152,8 @@ function getBecomeTutorPageHTML() {
         <div class="row justify-content-center">
           <div class="col-lg-8">
             <div class="bg-white rounded-3 shadow-sm p-5">
-              <h2 class="h3 fw-bold text-center mb-4">Apply to Become a Tutor</h2>
-              <p class="text-muted text-center mb-5">Fill out the form below and we'll review your application within 2-3 business days.</p>
+              <h2 class="h3 fw-bold text-center mb-4">Become a Tutor</h2>
+              <p class="text-muted text-center mb-5">Fill out the form below and you'll instantly become a verified tutor on our platform!</p>
               
               <form id="tutor-application-form">
                 <div class="row g-3 mb-4">
@@ -1232,7 +1272,7 @@ function getBecomeTutorPageHTML() {
                 </div>
                 
                 <div class="text-center">
-                  <button type="submit" class="btn btn-primary btn-lg px-5">Submit Application</button>
+                  <button type="submit" class="btn btn-primary btn-lg px-5">Become a Tutor Now</button>
                 </div>
               </form>
             </div>

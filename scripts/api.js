@@ -60,6 +60,42 @@ class TutorAppAPI {
     }
   }
 
+  static async createTutor(tutorData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/tutors`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(tutorData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create tutor profile');
+      }
+
+      const tutor = await response.json();
+      return {
+        id: tutor.id,
+        name: tutor.name,
+        major: tutor.major,
+        year: tutor.year,
+        university: tutor.university,
+        subjects: JSON.parse(tutor.subjects || '[]'),
+        hourlyRate: tutor.hourlyRate,
+        rating: tutor.rating,
+        reviews: tutor.reviews,
+        bio: tutor.bio,
+        availability: tutor.availability,
+        isVerified: tutor.isVerified
+      };
+    } catch (error) {
+      console.error('Error creating tutor:', error);
+      throw error;
+    }
+  }
+
   // Authentication API
   static async login(email, password) {
     try {
