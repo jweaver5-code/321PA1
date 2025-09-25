@@ -373,58 +373,200 @@ function getHomePageHTML() {
   return `
     <div class="min-vh-100">
       <!-- Hero Section -->
-      <main class="container py-5">
-        <div class="text-center py-5">
-          <h2 class="display-4 fw-bold text-dark mb-4">
-            Find the Perfect Tutor
-          </h2>
-          <p class="lead text-muted mb-5 max-w-3xl mx-auto">
-            Connect with qualified tutors in your area for personalized academic assistance. 
-            Get help with any subject, anytime, anywhere.
-          </p>
-          <div class="mt-4">
-            <button class="btn btn-primary btn-lg px-4 py-3" onclick="navigateTo('find-tutors')">
-              Get Started
-            </button>
+      <div class="bg-gradient-primary text-white py-5">
+        <div class="container">
+          <div class="row align-items-center">
+            <div class="col-lg-6">
+              <h1 class="display-4 fw-bold mb-4">Welcome to TutorApp</h1>
+              <p class="lead mb-4">
+                The perfect platform for students to find tutors and for tutors to share their knowledge. 
+                Connect, learn, and succeed together.
+              </p>
+              <div class="d-flex flex-wrap gap-3">
+                <button class="btn btn-light btn-lg px-4" onclick="navigateTo('find-tutors')">
+                  <i class="bi bi-search me-2"></i>Find Tutors
+                </button>
+                <button class="btn btn-outline-light btn-lg px-4" onclick="navigateTo('become-tutor')">
+                  <i class="bi bi-person-plus me-2"></i>Become a Tutor
+                </button>
+              </div>
+            </div>
+            <div class="col-lg-6 text-center">
+              <div class="bg-white bg-opacity-10 rounded-3 p-4">
+                <i class="bi bi-mortarboard display-1 mb-3"></i>
+                <h3 class="h4">Join Our Community</h3>
+                <p class="mb-0">Over 1,000+ students and tutors already connected</p>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- Features -->
-        <div class="py-5">
+      <!-- Main Options Section -->
+      <div class="container py-5">
+        <div class="row">
+          <div class="col-lg-8 mx-auto text-center mb-5">
+            <h2 class="h3 fw-bold mb-3">Choose Your Path</h2>
+            <p class="text-muted">Whether you're looking for help or ready to help others, we've got you covered.</p>
+          </div>
+        </div>
+        
+        <div class="row g-4">
+          <!-- Find Tutors Card -->
+          <div class="col-lg-6">
+            <div class="card h-100 border-0 shadow-lg">
+              <div class="card-body p-5 text-center">
+                <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
+                  <i class="bi bi-search display-4 text-primary"></i>
+                </div>
+                <h3 class="h4 fw-bold mb-3">I Need a Tutor</h3>
+                <p class="text-muted mb-4">
+                  Find qualified tutors in your area for any subject. Get personalized help with your studies 
+                  from verified students and professionals.
+                </p>
+                <div class="row g-3 mb-4">
+                  <div class="col-6">
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-check-circle-fill text-success me-2"></i>
+                      <small>Verified Tutors</small>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-check-circle-fill text-success me-2"></i>
+                      <small>All Subjects</small>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-check-circle-fill text-success me-2"></i>
+                      <small>Flexible Scheduling</small>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-check-circle-fill text-success me-2"></i>
+                      <small>Instant Booking</small>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-primary btn-lg w-100" onclick="navigateTo('find-tutors')">
+                  Browse Tutors
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Become a Tutor Card -->
+          <div class="col-lg-6">
+            <div class="card h-100 border-0 shadow-lg">
+              <div class="card-body p-5 text-center">
+                <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
+                  <i class="bi bi-person-plus display-4 text-success"></i>
+                </div>
+                <h3 class="h4 fw-bold mb-3">I Want to Tutor</h3>
+                <p class="text-muted mb-4">
+                  Share your knowledge and earn money by helping other students. Join our community 
+                  of verified tutors and make a difference.
+                </p>
+                <div class="row g-3 mb-4">
+                  <div class="col-6">
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-check-circle-fill text-success me-2"></i>
+                      <small>Set Your Rate</small>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-check-circle-fill text-success me-2"></i>
+                      <small>Flexible Hours</small>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-check-circle-fill text-success me-2"></i>
+                      <small>Instant Approval</small>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-check-circle-fill text-success me-2"></i>
+                      <small>Secure Payments</small>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-success btn-lg w-100" onclick="navigateTo('become-tutor')">
+                  Start Teaching
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Features Section -->
+      <div class="bg-light py-5">
+        <div class="container">
+          <div class="row">
+            <div class="col-lg-8 mx-auto text-center mb-5">
+              <h2 class="h3 fw-bold mb-3">Why Choose TutorApp?</h2>
+              <p class="text-muted">We make tutoring simple, secure, and effective for everyone.</p>
+            </div>
+          </div>
+          
           <div class="row g-4">
             <div class="col-md-4">
               <div class="text-center">
-                <div class="bg-primary bg-opacity-10 rounded-3 p-4">
-                  <h3 class="h5 fw-semibold text-dark">Verified Tutors</h3>
-                  <p class="text-muted mb-0">
-                    All tutors are verified students and professionals with proven academic records.
-                  </p>
+                <div class="bg-white rounded-3 p-4 shadow-sm">
+                  <i class="bi bi-shield-check display-4 text-primary mb-3"></i>
+                  <h4 class="h5 fw-semibold">Verified & Safe</h4>
+                  <p class="text-muted mb-0">All tutors are background-checked and verified for quality and safety.</p>
                 </div>
               </div>
             </div>
             <div class="col-md-4">
               <div class="text-center">
-                <div class="bg-success bg-opacity-10 rounded-3 p-4">
-                  <h3 class="h5 fw-semibold text-dark">Instant Booking</h3>
-                  <p class="text-muted mb-0">
-                    Book tutoring sessions instantly or schedule for later. Flexible timing to fit your schedule.
-                  </p>
+                <div class="bg-white rounded-3 p-4 shadow-sm">
+                  <i class="bi bi-credit-card display-4 text-success mb-3"></i>
+                  <h4 class="h5 fw-semibold">Secure Payments</h4>
+                  <p class="text-muted mb-0">Safe and secure payment processing with money-back guarantee.</p>
                 </div>
               </div>
             </div>
             <div class="col-md-4">
               <div class="text-center">
-                <div class="bg-info bg-opacity-10 rounded-3 p-4">
-                  <h3 class="h5 fw-semibold text-dark">All Subjects</h3>
-                  <p class="text-muted mb-0">
-                    From math and science to languages and humanities. Find help for any subject or course.
-                  </p>
+                <div class="bg-white rounded-3 p-4 shadow-sm">
+                  <i class="bi bi-headset display-4 text-info mb-3"></i>
+                  <h4 class="h5 fw-semibold">24/7 Support</h4>
+                  <p class="text-muted mb-0">Get help whenever you need it with our dedicated support team.</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </main>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="container py-5">
+        <div class="row text-center">
+          <div class="col-md-3">
+            <div class="h2 fw-bold text-primary mb-1">500+</div>
+            <div class="text-muted">Active Tutors</div>
+          </div>
+          <div class="col-md-3">
+            <div class="h2 fw-bold text-success mb-1">1,200+</div>
+            <div class="text-muted">Students Helped</div>
+          </div>
+          <div class="col-md-3">
+            <div class="h2 fw-bold text-info mb-1">50+</div>
+            <div class="text-muted">Subjects</div>
+          </div>
+          <div class="col-md-3">
+            <div class="h2 fw-bold text-warning mb-1">4.9★</div>
+            <div class="text-muted">Average Rating</div>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 }
