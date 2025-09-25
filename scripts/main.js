@@ -139,18 +139,38 @@ async function handleTutorApplication(event) {
   }
   
   try {
-    // For now, just show success message without API call
-    // TODO: Integrate with API when it's running
-    console.log('Tutor Application Data:', formData);
+    // Create new tutor object
+    const newTutor = {
+      id: AppState.tutors.length + 1, // Simple ID generation
+      name: `${formData.firstName} ${formData.lastName}`,
+      major: formData.major,
+      year: formData.year,
+      university: formData.university,
+      subjects: formData.subjects,
+      hourlyRate: formData.hourlyRate,
+      rating: 5.0, // Start with perfect rating
+      reviews: 0,
+      bio: `I am a ${formData.year} ${formData.major} student at ${formData.university}. ${formData.experience} ${formData.motivation}`,
+      availability: formData.availability.length > 0 ? formData.availability.join(', ') : 'Flexible',
+      isVerified: true // Auto-verify new tutors
+    };
     
-    alert('Thank you for your application! You are now a verified tutor on TutorApp! You can start receiving bookings immediately.');
+    // Add to tutors list
+    AppState.tutors.push(newTutor);
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('tutors', JSON.stringify(AppState.tutors));
+    
+    console.log('New tutor added:', newTutor);
+    
+    alert('Congratulations! You are now a verified tutor on TutorApp! You can start receiving bookings immediately.');
     
     // Reset form
     document.getElementById('tutor-application-form').reset();
     
-    // Optionally redirect to dashboard
+    // Redirect to find tutors to see the new tutor
     setTimeout(() => {
-      navigateTo('dashboard');
+      navigateTo('find-tutors');
     }, 2000);
     
   } catch (error) {
@@ -195,8 +215,8 @@ function initializeApp() {
   // Load user from localStorage
   loadUser();
   
-  // Set initial page
-  navigateTo('home');
+  // Load tutors from localStorage first
+  loadTutorsFromLocalStorage();
   
   // Initialize tutors data from API (don't wait for it)
   loadTutorsFromAPI();
@@ -204,6 +224,28 @@ function initializeApp() {
   
   // Update UI based on auth state
   updateAuthUI();
+  
+  // Set initial page after everything is ready
+  setTimeout(() => {
+    navigateTo('home');
+  }, 100);
+}
+
+function loadTutorsFromLocalStorage() {
+  try {
+    const savedTutors = localStorage.getItem('tutors');
+    if (savedTutors) {
+      const tutors = JSON.parse(savedTutors);
+      // Merge with existing tutors, avoiding duplicates
+      tutors.forEach(tutor => {
+        if (!AppState.tutors.find(t => t.id === tutor.id)) {
+          AppState.tutors.push(tutor);
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error loading tutors from localStorage:', error);
+  }
 }
 
 async function loadTutorsFromAPI() {
