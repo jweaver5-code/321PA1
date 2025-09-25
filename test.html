@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TutorApp Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>TutorApp Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Check if API is running</h2>
+        <button onclick="testAPI()">Test API Connection</button>
+        <div id="api-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Test Tutor Application Form</h2>
+        <button onclick="testTutorForm()">Test Tutor Form Submission</button>
+        <div id="form-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Check Console Errors</h2>
+        <button onclick="checkConsole()">Check for JavaScript Errors</button>
+        <div id="console-result"></div>
+    </div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            try {
+                const response = await fetch('http://localhost:5000/api/tutors');
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<div class="success">✅ API is working! Found ${data.length} tutors.</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ API returned error: ${response.status}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ API connection failed: ${error.message}</div>`;
+            }
+        }
+        
+        function testTutorForm() {
+            const resultDiv = document.getElementById('form-result');
+            try {
+                // Test if the form elements exist
+                const firstName = document.getElementById('tutor-firstName');
+                const lastName = document.getElementById('tutor-lastName');
+                const email = document.getElementById('tutor-email');
+                
+                if (firstName && lastName && email) {
+                    resultDiv.innerHTML = `<div class="success">✅ Form elements found!</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Form elements not found. Make sure you're on the Become a Tutor page.</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error testing form: ${error.message}</div>`;
+            }
+        }
+        
+        function checkConsole() {
+            const resultDiv = document.getElementById('console-result');
+            const errors = [];
+            
+            // Override console.error to catch errors
+            const originalError = console.error;
+            console.error = function(...args) {
+                errors.push(args.join(' '));
+                originalError.apply(console, args);
+            };
+            
+            resultDiv.innerHTML = `<div class="success">✅ Console error monitoring enabled. Check browser console for errors.</div>`;
+        }
+    </script>
+</body>
+</html>

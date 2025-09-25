@@ -128,7 +128,7 @@ async function handleTutorApplication(event) {
     hourlyRate: parseFloat(document.getElementById('rate-display').value),
     experience: document.getElementById('tutor-experience').value,
     motivation: document.getElementById('tutor-motivation').value,
-    availability: Array.from(document.querySelectorAll('input[name="availability"]:checked')).map(cb => cb.value)
+    availability: Array.from(document.querySelectorAll('input[id^="avail-"]:checked')).map(cb => cb.value)
   };
   
   try {
