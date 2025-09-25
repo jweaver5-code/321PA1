@@ -124,12 +124,21 @@ function initializeApp() {
   // Set initial page
   navigateTo('home');
   
-  // Initialize tutors data
-  AppState.tutors = mockTutors;
-  AppState.bookings = mockBookings;
+  // Initialize tutors data from API
+  loadTutorsFromAPI();
+  AppState.bookings = mockBookings; // Keep mock bookings for now
   
   // Update UI based on auth state
   updateAuthUI();
+}
+
+async function loadTutorsFromAPI() {
+  try {
+    AppState.tutors = await TutorAppAPI.getTutors();
+  } catch (error) {
+    console.error('Failed to load tutors from API, using mock data:', error);
+    AppState.tutors = mockTutors;
+  }
 }
 
 // Authentication functions
@@ -433,8 +442,25 @@ function initializeFindTutorsPage() {
   setupFindTutorsEventListeners();
 }
 
-function loadTutors() {
+async function loadTutors() {
   const tutorsContainer = document.getElementById('tutors-container');
+  
+  // Show loading state
+  tutorsContainer.innerHTML = `
+    <div class="col-12 text-center py-5">
+      <div class="loading-spinner mx-auto mb-3"></div>
+      <p class="text-muted">Loading tutors...</p>
+    </div>
+  `;
+  
+  try {
+    // Try to load from API first
+    AppState.tutors = await TutorAppAPI.getTutors();
+  } catch (error) {
+    console.error('Failed to load tutors from API, using existing data:', error);
+    // Keep existing tutors data
+  }
+  
   const tutors = getFilteredTutors();
   
   if (tutors.length === 0) {
@@ -719,7 +745,7 @@ function initializeLoginPage() {
   }
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
   e.preventDefault();
   
   const email = document.getElementById('email').value;
@@ -731,16 +757,13 @@ function handleLogin(e) {
     return;
   }
   
-  // Mock login - in real app, this would be an API call
-  const mockUser = {
-    firstName: 'John',
-    lastName: 'Doe',
-    email: email,
-    userType: 'student'
-  };
-  
-  login(mockUser);
-  navigateTo('dashboard');
+  try {
+    const user = await TutorAppAPI.login(email, password);
+    login(user);
+    navigateTo('dashboard');
+  } catch (error) {
+    alert('Login failed: ' + error.message);
+  }
 }
 
 // Signup page
@@ -870,7 +893,7 @@ function initializeSignupPage() {
   });
 }
 
-function handleSignup(e) {
+async function handleSignup(e) {
   e.preventDefault();
   
   const firstName = document.getElementById('firstName').value;
@@ -903,22 +926,26 @@ function handleSignup(e) {
     return;
   }
   
-  // Mock signup - in real app, this would be an API call
-  const mockUser = {
-    firstName: firstName,
-    lastName: lastName,
-    email: email,
-    userType: userType,
-    university: university
-  };
-  
-  // Simulate successful signup
-  alert('Account created successfully! Redirecting to login...');
-  
-  // Redirect to login page
-  setTimeout(() => {
-    navigateTo('login');
-  }, 1500);
+  try {
+    const userData = {
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      password: password,
+      userType: userType,
+      university: university
+    };
+    
+    const result = await TutorAppAPI.signup(userData);
+    alert('Account created successfully! Redirecting to login...');
+    
+    // Redirect to login page
+    setTimeout(() => {
+      navigateTo('login');
+    }, 1500);
+  } catch (error) {
+    alert('Signup failed: ' + error.message);
+  }
 }
 function getBecomeTutorPageHTML() { return '<div class="container py-5"><h1>Become a Tutor Page</h1></div>'; }
 function getHowItWorksPageHTML() { return '<div class="container py-5"><h1>How It Works Page</h1></div>'; }

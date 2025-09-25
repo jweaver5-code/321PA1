@@ -1,7 +1,28 @@
-node_modules/
-.next/
-dist/
-.env
-*.log
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Build outputs
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS files
 .DS_Store
-coverage/
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
