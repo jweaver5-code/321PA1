@@ -198,7 +198,7 @@ function initializeApp() {
   // Set initial page
   navigateTo('home');
   
-  // Initialize tutors data from API
+  // Initialize tutors data from API (don't wait for it)
   loadTutorsFromAPI();
   AppState.bookings = mockBookings; // Keep mock bookings for now
   
@@ -208,9 +208,29 @@ function initializeApp() {
 
 async function loadTutorsFromAPI() {
   try {
-    AppState.tutors = await TutorAppAPI.getTutors();
+    // Check if API is available
+    const response = await fetch('http://localhost:5000/api/tutors');
+    if (response.ok) {
+      const data = await response.json();
+      AppState.tutors = data.map(tutor => ({
+        id: tutor.id,
+        name: tutor.name,
+        major: tutor.major,
+        year: tutor.year,
+        university: tutor.university,
+        subjects: JSON.parse(tutor.subjects || '[]'),
+        hourlyRate: tutor.hourlyRate,
+        rating: tutor.rating,
+        reviews: tutor.reviews,
+        bio: tutor.bio,
+        availability: tutor.availability,
+        isVerified: tutor.isVerified
+      }));
+    } else {
+      throw new Error('API not available');
+    }
   } catch (error) {
-    console.error('Failed to load tutors from API, using mock data:', error);
+    console.log('Using mock data for tutors:', error.message);
     AppState.tutors = mockTutors;
   }
 }
@@ -671,9 +691,28 @@ async function loadTutors() {
   
   try {
     // Try to load from API first
-    AppState.tutors = await TutorAppAPI.getTutors();
+    const response = await fetch('http://localhost:5000/api/tutors');
+    if (response.ok) {
+      const data = await response.json();
+      AppState.tutors = data.map(tutor => ({
+        id: tutor.id,
+        name: tutor.name,
+        major: tutor.major,
+        year: tutor.year,
+        university: tutor.university,
+        subjects: JSON.parse(tutor.subjects || '[]'),
+        hourlyRate: tutor.hourlyRate,
+        rating: tutor.rating,
+        reviews: tutor.reviews,
+        bio: tutor.bio,
+        availability: tutor.availability,
+        isVerified: tutor.isVerified
+      }));
+    } else {
+      throw new Error('API not available');
+    }
   } catch (error) {
-    console.error('Failed to load tutors from API, using existing data:', error);
+    console.log('Using existing tutors data:', error.message);
     // Keep existing tutors data
   }
   
