@@ -1,7 +1,8 @@
-# Database files
+# Database files (exclude public database)
 *.db
 *.db-shm
 *.db-wal
+!TutorApp.API/Data/tutorapp_public.db
 
 # Build outputs
 bin/
